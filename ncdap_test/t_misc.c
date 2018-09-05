@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <netcdf.h>
-
+#include "netcdf.h"
+#include "nctestserver.h"
 
 #define URL1 "http://%s" /* test that no trailing / is ok */
 static char url1[1024];
@@ -31,13 +31,10 @@ int
 main()
 {
     int ncid,retval;
+    char* svc = NULL;
 
-    {
-    char* evv = getenv("DTSTESTSERVER");
-    if(evv == NULL)
-	evv = "remotetest.unidata.ucar.edu";
-    snprintf(url1,sizeof(url1),URL1,evv);
-    }
+    svc = nc_findtestserver("dts",0,NULL);
+    snprintf(url1,sizeof(url1),URL1,svc);
 
     printf("Testing: Misc. Tests \n");
     retval = nc_open(url1, 0, &ncid);

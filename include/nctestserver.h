@@ -27,6 +27,12 @@ parseServers(const char* remotetestservers)
     char* svc;
     char** l;
     
+    if(remotetestservers == NULL || strlen(remotetestservers) == 0) {
+        list = (char**)malloc(sizeof(char*) * 1);
+	if(list == NULL) return NULL;
+	list[0] = NULL;
+	return list;
+    }
     list = (char**)malloc(sizeof(char*) * (int)(strlen(remotetestservers)/2));
     if(list == NULL) return NULL;
     l = list;
@@ -73,7 +79,7 @@ nc_findtestserver(const char* path, int isdap4, const char* serverlist)
 	    path++;
         snprintf(url,MAXSERVERURL,"http://%s/%s",*svc,path);
 	if(ping(url) == NC_NOERR)
-	    return strdup(url);
+	    return strdup(*svc);
     }
     return NULL;
 }

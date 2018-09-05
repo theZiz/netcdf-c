@@ -45,25 +45,15 @@ BASICCOMBO="tiggeUser:tigge"
 BADCOMBO="tiggeUser:xxxxx"
 URLPATH="thredds/dodsC/testRestrictedDataset/testData2.nc"
 PROTO=http
+
 if test "x$LOCAL" = x ; then
-URLSERVER="remotetest.unidata.ucar.edu"
+  URLSERVER=`${execdir}/findtestserver dap2 dts`
+  if test "x$URLSERVER" = x ; then
+    echo "***XFAIL: Cannot find dts testserver"
+    exit 1
+  fi
 else
-URLSERVER="localhost:8081"
-fi
-
-# See if we need to override
-if test "x$URS" != "x" ; then
-#https://54.86.135.31/opendap/data/nc/fnoc1.nc.dds
-URLSERVER="54.86.135.31"
-URLPATH="opendap/data/nc/fnoc1.nc"
-BASICCOMBO="$URS"
-RCEMBED=0
-NETRC=$NETRCFILE
-PROTO=https
-fi
-
-if test "x$DBG" = x1 ; then
-URLPATH="${URLPATH}#log&show=fetch"
+  URLSERVER="localhost:8081"
 fi
 
 # Split the combo

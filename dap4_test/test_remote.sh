@@ -63,6 +63,7 @@ if test "x$TESTSERVER" = x ; then
 echo "***XFAIL: Cannot find d4ts testserver"
 exit 1
 fi
+TESTSERVER="http://${TESTSERVER}/d4ts"
 
 if test "x${RESET}" = x1 ; then rm -fr ${BASELINER}/*.dmp ; fi
 for f in $F ; do

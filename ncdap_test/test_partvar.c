@@ -106,8 +106,11 @@ main()
 	fprintf(stderr,"Cannot locate test server\n");
 	exit(0);
     }
-    strncpy(url,PARAMS,sizeof(url));
+    url[0] = '\0';
+    strlcat(url,PARAMS,sizeof(url));
+    strlcat(url,"http://",sizeof(url));
     strlcat(url,svc,sizeof(url));
+    strlcat(url,"/dts",sizeof(url));
     strlcat(url,DTSTEST,sizeof(url));
 
     printf("test_partvar: url=%s\n",url);

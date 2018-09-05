@@ -13,6 +13,7 @@ if test "x$TESTSERVER" = "x" ; then
 echo "***XFAIL: Cannot locate test server for dts"
 exit 1
 fi
+TESTSERVER="http://${TESTSERVER}/dts"
 
 PARAMS="[log]"
 #PARAMS="${PARAMS}[show=fetch]"
@@ -269,7 +270,7 @@ for t in ${TESTSET} ; do
     url="${PARAMS}${TESTURL}/$testname"
   else
     name="${testname}.${testno}"
-    url="${PARAMS}${TESTURL}/$testname?${ce}"
+    url="${PARAMS}${TESTSERVER}/${TESTURL}/$testname?${ce}"
   fi
   if test "x$quiet" = "x0" ; then echo "*** Testing: ${name}"; fi
   if test "x$quiet" = "x0" ; then echo "*** URL: ${url}"; fi

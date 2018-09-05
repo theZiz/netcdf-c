@@ -30,11 +30,10 @@ usage()
     exit(1);
 }
 
-
 int
 main(int argc, char** argv)
 {
-    const char* url = NULL;
+    const char* svc = NULL;
     const char* servlet = NULL;
     const char* proto = NULL;
     const char* serverlist = NULL;
@@ -68,12 +67,12 @@ main(int argc, char** argv)
     if(serverlist == NULL || strlen(serverlist) == 0)
 	fprintf(stderr,"Cannot determine a server list");
 
-    url = nc_findtestserver(servlet,isdap4,serverlist);
-    if(url == NULL) {
-       url = "";
+    svc = nc_findtestserver(servlet,isdap4,serverlist);
+    if(svc == NULL) {
+	svc = "";
 	fprintf(stderr,"not found: %s\n",servlet);
     }
-    printf("%s",url);
+    printf("%s",svc);
     fflush(stdout);
     exit(0);
 }

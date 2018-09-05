@@ -40,20 +40,14 @@ fi
 
 BASICCOMBO="tiggeUser:tigge"
 BADCOMBO="tiggeUser:xxxxx"
-URLSERVER="remotetest.unidata.ucar.edu"
 #http://remotetest.unidata.ucar.edu/thredds/dodsC/restrict/testData.nc.html
 URLPATH="thredds/dodsC/restrict/testData.nc"
 PROTO=http
 
-# See if we need to override
-if test "x$URS" != "x" ; then
-#https://54.86.135.31/opendap/data/nc/fnoc1.nc.dds
-URLSERVER="54.86.135.31"
-URLPATH="opendap/data/nc/fnoc1.nc"
-BASICCOMBO="$URS"
-RCEMBED=0
-NETRC=$NETRCFILE
-PROTO=https
+URLSERVER=`${execdir}/findtestserver dap2 dts`
+if test "x$URLSERVER" = x ; then
+    echo "***XFAIL: Cannot find dts testserver"
+    exit 1
 fi
 
 if test "x$DBG" = x1 ; then

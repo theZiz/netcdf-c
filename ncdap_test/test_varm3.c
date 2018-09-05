@@ -99,7 +99,10 @@ main()
         fprintf(stderr,"Cannot locate test server\n");
 	exit(0);
     }
-    strncpy(url,svc,sizeof(url));
+    url[0] = '\0';
+    strlcat(url,"http://",sizeof(url));
+    strlcat(url,svc,sizeof(url));
+    strlcat(url,"/thredds",sizeof(url));
     strlcat(url,TESTPATH,sizeof(url));
 
     printf("*** Test: varm on URL: %s\n",url);

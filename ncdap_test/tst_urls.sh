@@ -8,11 +8,12 @@
 # Define various sets of test targets
 
 # Figure our dst server; if none, then just stop
-DTS=`${execdir}/findtestserver dap2 dts`
-if test "x$DTS" = "x" ; then
+SVC=`${execdir}/findtestserver dap2 dts`
+if test "x$SVC" = "x" ; then
 echo "WARNING: Cannot locate test server for dts"
 exit 1
 fi
+TESTSERVER="http://${SVC}/dts"
 
 if test "x$timing" = "x1" ; then TIMECMD="time"; else TIMECMD=""; fi
 expected3="${srcdir}/expectremote3"
@@ -145,10 +146,10 @@ for x in ${REMOTETESTS} ; do
   constrain $x
   if test "x$constrained" = "x1" ; then
     name="${testname}.${testno}"
-    url="${PARAMS}${DTS}/$testname?${ce}"
+    url="${PARAMS}${TESTSERVER}/$testname?${ce}"
   else
     name="${testname}"
-    url="${PARAMS}${DTS}/$testname"
+    url="${PARAMS}${TESTSERVER}/$testname"
   fi
   if test "x$quiet" = "x0" ; then echo "*** Testing: ${name} ; url=$url" ; fi
   # determine if this is an xfailtest
