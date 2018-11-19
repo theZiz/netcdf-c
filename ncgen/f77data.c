@@ -23,6 +23,7 @@ f77_charconstant(Generator* generator, Symbol* sym, Bytebuffer* codebuf, ...)
     charbuf = va_arg(ap, Bytebuffer*);
     va_end(ap);
     bbNull(charbuf);
+    f77quotestring(charbuf);
     bbCatbuf(codebuf,charbuf);
     return 1;
 }
