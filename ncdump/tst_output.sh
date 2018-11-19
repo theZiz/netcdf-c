@@ -75,5 +75,9 @@ ${NCDUMP} -s tst_mslp_64.nc | sed 's/e+0/e+/g' > tst_format_att_64.cdl
 echo "*** comparing ncdump -s of generated file with ref_tst_format_att_64.cdl ..."
 diff -b tst_format_att_64.cdl $srcdir/ref_tst_format_att_64.cdl
 
+echo "*** Testing that ncgen produces correct Jave code from c0.cdl."
+${NCGEN} -lj $srcdir/../ncgen/c0.cdl > tst_output_jtest.java
+diff -b tst_output_jtest.java $srcdir/ref_jtest.java
+
 echo "*** All ncgen and ncdump test output for 64-bit offset format passed!"
 exit 0

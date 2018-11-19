@@ -258,16 +258,6 @@ jtypecap(nc_type type)
     return 0;
 }
 
-void
-jquotestring(Bytebuffer* databuf, char quote)
-{
-    char* escaped = jescapify(bbContents(databuf),'"',bbLength(databuf));
-    bbClear(databuf);
-    bbAppend(databuf,quote);
-    if(escaped != NULL) bbCat(databuf,escaped);
-    bbAppend(databuf,quote);
-}
-
 /* Compute the name for a given symbol*/
 /* Cache in symbol->lname*/
 static const char*
@@ -442,7 +432,9 @@ genj_writevar(Generator* generator, Symbol* vsym, Bytebuffer* code,
         codedump(stmt);
         if(typecode == NC_CHAR) {
             /* Construct the data Array */
+#if 0
             jquotestring(code,'\'');
+#endif
 	    bbprintf0(stmt,"%sdata.set((char)%s);\n",
 			  indented(1),bbContents(code));
 	} else {
@@ -469,7 +461,9 @@ genj_writevar(Generator* generator, Symbol* vsym, Bytebuffer* code,
 	bbCat(dimbuf,"}");
         /* Construct the data array and capture its index */
 	if(typecode == NC_CHAR) {
+#if 0
 	    jquotestring(code,'"');
+#endif
             bbprintf0(stmt,"%sString contents = ",
 			indented(1));
 	} else {
@@ -534,7 +528,8 @@ genj_writeattr(Generator* generator, Symbol* asym, Bytebuffer* code,
 	    bbClear(code);
 	    bbCat(code,"\"\"");
 	    len++;
-	} else
+	}
+	else
             jquotestring(code,'"');
 	bbNull(code);
     } else { /* not NC_CHAR*/

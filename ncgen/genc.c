@@ -1066,7 +1066,9 @@ genc_writevar(Generator* generator, Symbol* vsym, Bytebuffer* code,
 			cname(vsym),
 			(unsigned long)length);
 	    codedump(stmt);
-	    cquotestring(code,'"');
+#if 0	
+             cquotestring(code,'"');
+#endif
 	    codedump(code);
 	    codeline(" ;");
 	} else {

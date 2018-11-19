@@ -69,6 +69,7 @@ extern char* escapify(char*,int,size_t);
 extern char* escapifyname(char* s0);
 extern void cquotestring(Bytebuffer*,char quote);
 extern void f77quotestring(Bytebuffer*);
+extern void jquotestring(Bytebuffer*, char quote);
 extern char* xescapify(char* s0, int quote, size_t len);
 extern char* jescapify(char* s0, int quote, size_t len);
 extern char* jescapifyname(char* s0);

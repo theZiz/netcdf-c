@@ -89,10 +89,20 @@ escapifyname(char* s0)
 void
 cquotestring(Bytebuffer* databuf, char quote)
 {
-    char* escaped = escapify(bbContents(databuf),'"',bbLength(databuf));
+    char* escaped = escapify(bbContents(databuf),quote,bbLength(databuf));
     bbClear(databuf);
     bbAppend(databuf,quote);
     bbCat(databuf,escaped);
+    bbAppend(databuf,quote);
+}
+
+void
+jquotestring(Bytebuffer* databuf, char quote)
+{
+    char* escaped = jescapify(bbContents(databuf),quote,bbLength(databuf));
+    bbClear(databuf);
+    bbAppend(databuf,quote);
+    if(escaped != NULL) bbCat(databuf,escaped);
     bbAppend(databuf,quote);
 }
 

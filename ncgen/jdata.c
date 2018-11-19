@@ -23,6 +23,7 @@ j_charconstant(Generator* generator, Symbol* sym, Bytebuffer* codebuf, ...)
     charbuf = va_arg(ap, Bytebuffer*);
     va_end(ap);
     bbNull(charbuf);
+    jquotestring(charbuf,'"');
     bbCatbuf(codebuf,charbuf);
     return 1;
 }

@@ -133,7 +133,8 @@ tst_hdf5_offset.sh run_ncgen_nc4_tests.sh tst_nccopy3_subset.sh		\
 ref_nccopy3_subset.nc ref_test_corrupt_magic.nc tst_ncgen_shared.sh	\
 tst_ncgen4.sh tst_ncgen4_classic.sh tst_ncgen4_diff.sh			\
 tst_ncgen4_cycle.sh tst_null_byte_padding.sh				\
-ref_null_byte_padding_test.nc ref_tst_irish_rover.nc ref_provenance_v1.nc
+ref_null_byte_padding_test.nc ref_tst_irish_rover.nc                    \
+ref_provenance_v1.nc ref_jtest.java
 
 # The L512.bin file is file containing exactly 512 bytes each of value 0.
 # It is used for creating hdf5 files with varying offsets for testing.
@@ -163,4 +164,4 @@ compound_datasize_test.nc compound_datasize_test2.nc ncf199.nc		\
 tst_c0.cdl tst_c0_4.cdl tst_c0_4c.cdl tst_c0_64.cdl			\
 tst_compound_datasize_test.cdl tst_compound_datasize_test2.cdl		\
 tst_ncf199.cdl tst_tst_gattenum.cdl tst_tst_usuffix.cdl ctest.c		\
-ctest64.c nccopy3_subset_out.nc camrun.c
+ctest64.c nccopy3_subset_out.nc camrun.c tst_output_jtest.java

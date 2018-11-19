@@ -725,7 +725,8 @@ computesize(Symbol* tsym)
                 }
             }
 	    tsym->typ.cmpdalign = largealign; /* total structure size alignment */
-            offset += (offset % largealign);
+            /* wrong: offset += (offset % largealign); */
+	    while((offset % largealign) != 0) offset++;
 	    tsym->typ.size = offset;
 	    break;
         case NC_FIELD: /* Compute size assume no unlimited dimensions*/
