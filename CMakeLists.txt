@@ -7,7 +7,7 @@
 ##################################
 
 #Minimum required CMake Version
-cmake_minimum_required(VERSION 3.6.1)
+cmake_minimum_required(VERSION 3.5.1)
 
 #Project Name
 project(netCDF C)
@@ -1413,7 +1413,7 @@ CHECK_C_SOURCE_COMPILES("
 #include <sys/mmap.h>
 int main() {int x = MAP_ANONYMOUS;}" HAVE_MAPANON)
 
-IF(NOT HAVE_MMMAP OR NOT HAVE_MREMAP or NOT HAVE_MAPANON)
+IF(NOT HAVE_MMMAP OR NOT HAVE_MREMAP OR NOT HAVE_MAPANON)
   MESSAGE(WARNING "mmap or mremap or MAP_ANONYMOUS not found: disabling MMAP support.")
   SET(ENABLE_MMAP OFF)
 ENDIF()
