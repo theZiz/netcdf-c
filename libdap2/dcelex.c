@@ -17,6 +17,8 @@
 #include "dceconstraints.h"
 #include "dceparselex.h"
 
+extern long long int strtoll(const char*, char**, int);
+
 /* Forward */
 static void dumptoken(DCElexstate* lexstate);
 static int tohex(int c);

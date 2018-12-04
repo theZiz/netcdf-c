@@ -8,6 +8,9 @@
 #include <assert.h>
 #include "ezxml.h"
 
+extern long long int strtoll(const char *nptr, char **endptr, int base);
+extern unsigned long long int strtoull(const char *nptr, char **endptr, int base);
+
 /**
  * Implement the Dap4 Parser Using a DOM Parser
  *

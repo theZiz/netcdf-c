@@ -288,7 +288,8 @@ FloatInf|-?Inff	{ /* missing value (pre-2.4 backward compatibility) */
 void
 ignore()
 {
+#ifndef YY_NO_UNPUT
     yyunput(0,NULL);
-
+#endif
 }
 

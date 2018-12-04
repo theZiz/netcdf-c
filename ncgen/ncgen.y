@@ -26,6 +26,9 @@ static char SccsId[] = "$Id: ncgen.y,v 1.42 2010/05/18 21:32:46 dmh Exp $";
 #define ncvar_t void
 #include "nctime.h"
 
+extern int fileno(FILE*); 
+extern unsigned long long int strtoull(const char*, char**, int);
+
 /* parser controls */
 #define YY_NO_INPUT 1
 

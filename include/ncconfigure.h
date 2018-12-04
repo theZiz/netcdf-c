@@ -16,14 +16,19 @@
 
 /*
 This is included in bottom
-of config.h. It is where,
+of config.h. It is where, 
 typically, alternatives to
 missing functions should be
 defined and missing types defined.
 */
 
-#ifndef HAVE_STRDUP
+/*Warning: Cygwin with -ansi does not define these functions
+  in its headers.*/
+#if __STDC__ == 1 /*supposed to be same as -ansi flag */
 extern char* strdup(const char*);
+extern int strlcat(const char*,const char*,size_t);
+extern int snprintf(char*, size_t, const char*, ...); 
+extern int strcasecmp(const char*, const char*);
 #endif
 
 /*
@@ -32,14 +37,6 @@ typedef long ssize_t;
 #define HAVE_SSIZE_T
 #endif
 */
-/* handle null arguments */
-#ifndef nulldup
-#ifdef HAVE_STRDUP
-#define nulldup(s) ((s)==NULL?NULL:strdup(s))
-#else
-char *nulldup(const char* s);
-#endif
-#endif
 
 #ifdef _MSC_VER
 #ifndef HAVE_SSIZE_T
@@ -58,6 +55,7 @@ extern size_t strlcat(char* dst, const char* src, size_t dsize);
 #endif
 #endif
 
+/* handle null arguments */
 #ifndef nulldup
 #define nulldup(s) ((s)==NULL?NULL:strdup(s))
 #endif
