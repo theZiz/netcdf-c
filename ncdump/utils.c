@@ -14,8 +14,6 @@
 #include <ctype.h>
 #include "utils.h"
 
-extern int isascii(int c);
-
 /*
  * Print error message to stderr and exit
  */

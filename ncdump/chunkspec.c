@@ -12,9 +12,6 @@
 #include "utils.h"
 #include "chunkspec.h"
 
-extern long strtol(const char*, char**, int);
-extern long long strtoll(const char*, char**, int);
-
 /* Structure mapping dimension IDs to corresponding chunksizes. */
 static struct DimChunkSpecs {
     size_t ndims;		/* number of dimensions in chunkspec string */

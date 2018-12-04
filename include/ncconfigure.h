@@ -22,15 +22,6 @@ missing functions should be
 defined and missing types defined.
 */
 
-/*Warning: Cygwin with -ansi does not define these functions
-  in its headers.*/
-#if __STDC__ == 1 /*supposed to be same as -ansi flag */
-extern char* strdup(const char*);
-extern size_t strlcat(const char*,const char*,size_t);
-extern int snprintf(char*, size_t, const char*, ...); 
-extern int strcasecmp(const char*, const char*);
-#endif
-
 /*
 #ifndef HAVE_SSIZE_T
 typedef long ssize_t;
@@ -46,13 +37,24 @@ typedef SSIZE_T ssize_t;
 #endif
 #endif
 
-#ifndef HAVE_STRLCAT
-#ifdef _MSC_VER
+/*Warning: Cygwin with -ansi does not define these functions
+  in its headers.*/
+#if __STDC__ == 1 /*supposed to be same as -ansi flag */
+EXTERNL char* strdup(const char*);
+EXTERNL size_t strlcat(const char*,const char*,size_t);
+EXTERNL int snprintf(char*, size_t, const char*, ...); 
+EXTERNL int strcasecmp(const char*, const char*);
+EXTERNL long long int strtoll(const char*, char**, int);
+EXTERNL unsigned long long int strtoull(const char*, char**, int);
+EXTERNL int fileno(struct FILE*); 
+#ifndef isascii
+EXTERNL int isascii(int c);
+#endif
+#endif
+
+#ifdef _WIN32
 /* Windows strlcat_s is equivalent to strlcat, but different arg order */
 #define strlcat(d,s,n) strcat_s((d),(n),(s))
-#else
-extern size_t strlcat(char* dst, const char* src, size_t dsize);
-#endif
 #endif
 
 /* handle null arguments */
