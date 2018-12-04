@@ -22,6 +22,15 @@ missing functions should be
 defined and missing types defined.
 */
 
+/*Warning: Cygwin with -ansi does not define these functions
+  in its headers.*/
+#if __STDC__ == 1 /*supposed to be same as -ansi flag */
+extern char* strdup(const char*);
+extern size_t strlcat(char*,const char*,size_t);
+extern int snprintf(char*, size_t, const char*, ...); 
+extern int strcasecmp(const char*, const char*);
+#endif
+
 /*
 #ifndef HAVE_SSIZE_T
 typedef long ssize_t;
