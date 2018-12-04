@@ -26,7 +26,7 @@ defined and missing types defined.
   in its headers.*/
 #if __STDC__ == 1 /*supposed to be same as -ansi flag */
 extern char* strdup(const char*);
-extern int strlcat(const char*,const char*,size_t);
+extern size_t strlcat(char*,const char*,size_t);
 extern int snprintf(char*, size_t, const char*, ...); 
 extern int strcasecmp(const char*, const char*);
 #endif
