@@ -31,8 +31,12 @@ readfile(const char* path, NC_memio* memio)
 #else
     f = fopen(path,"r");
 #endif
-    if(f == NULL)
-	{status = errno; goto done;}
+    if(f == NULL) {
+	fprintf(stderr,"cannot open file: %s\n",path);
+	fflush(stderr);
+	status = errno;
+	goto done;
+    }
     /* get current filesize */
     if(fseek(f,0,SEEK_END) < 0)
 	{status = errno; goto done;}
