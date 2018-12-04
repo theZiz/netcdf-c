@@ -31,8 +31,11 @@ readfile(const char* path, NC_memio* memio)
 #else
     f = fopen(path,"r");
 #endif
-    if(f == NULL)
-	{status = errno; goto done;}
+    if(f == NULL) {
+	if(errno == ENOENT) fprintf(stderr,"file does not exist: %s\n",path);
+	status = errno;
+	goto done;
+    }
     /* get current filesize */
     if(fseek(f,0,SEEK_END) < 0)
 	{status = errno; goto done;}
