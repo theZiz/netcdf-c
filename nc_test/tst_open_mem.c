@@ -56,6 +56,7 @@ readfile(const char* path, NC_memio* memio)
     if(memio) {
 	memio->size = (size_t)filesize;
 	memio->memory = memory;
+	memory = NULL;
     }    
 done:
     if(status != NC_NOERR && memory != NULL)
@@ -82,6 +83,8 @@ main(int argc, char** argv)
 	goto exit;
     if((retval = nc_close(ncid)))
 	goto exit;
+    if(mem.memory)
+        free(mem.memory);
     return 0;
 exit:
     fprintf(stderr,"retval=%d\n",retval);
