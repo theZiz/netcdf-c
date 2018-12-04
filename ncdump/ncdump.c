@@ -18,8 +18,7 @@ Research/Unidata. See \ref copyright file for more info.  */
 #include <fcntl.h>
 #endif
 
-#ifdef _MSC_VER
-#define snprintf _snprintf
+#ifdef _WIN32
 #include "XGetopt.h"
 int opterr;
 int optind;

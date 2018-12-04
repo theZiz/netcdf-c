@@ -327,7 +327,7 @@ strdup(const char* s)
  * Returns strlen(src) + MIN(dsize, strlen(initial dst)).
  * If retval >= dsize, truncation occurred.
  */
-size_t
+EXTERNL size_t
 strlcat(char* dst, const char* src, size_t dsize)
 {
 	const char *odst = dst;
