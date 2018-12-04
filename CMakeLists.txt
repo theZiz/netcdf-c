@@ -7,7 +7,8 @@
 ##################################
 
 #Minimum required CMake Version
-cmake_minimum_required(VERSION 3.6.1)
+#cmake_minimum_required(VERSION 3.6.1)
+cmake_minimum_required(VERSION 3.5.1)
 
 #Project Name
 project(netCDF C)
