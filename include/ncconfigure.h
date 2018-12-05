@@ -39,25 +39,19 @@ typedef SSIZE_T ssize_t;
 
 /*Warning: Cygwin with -ansi does not define these functions
   in its headers.*/
+#ifndef _WIN32
 #if __STDC__ == 1 /*supposed to be same as -ansi flag */
-#ifdef _WIN32
-#define NCIMPORT __declspec(dllimport) extern
-#else
-#define NCIMPORT extern
+extern char* strdup(const char*);
+extern size_t strlcat(char*,const char*,size_t);
+extern int snprintf(char*, size_t, const char*, ...); 
+extern int strcasecmp(const char*, const char*);
+extern long long int strtoll(const char*, char**, int);
+extern unsigned long long int strtoull(const char*, char**, int);
 #endif
-NCIMPORT char* strdup(const char*);
-NCIMPORT size_t strlcat(char*,const char*,size_t);
-NCIMPORT int snprintf(char*, size_t, const char*, ...); 
-NCIMPORT int strcasecmp(const char*, const char*);
-NCIMPORT long long int strtoll(const char*, char**, int);
-NCIMPORT unsigned long long int strtoull(const char*, char**, int);
-#undef NCIMPORT
 #endif
 
 #ifdef _WIN32
 #define strlcat(d,s,n) strcat_s((d),(n),(s))
-#define snprintf _snprintf
-#define strcasecmp stricmp
 #endif
 
 /* handle null arguments */
