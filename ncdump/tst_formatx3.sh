@@ -55,6 +55,6 @@ if test "x$ENABLE_CDF5" = x1 ; then
     fi
 fi
 
-#rm -f tmp_tst_formatx3 tst_formatx3.nc
+rm -f tmp_tst_formatx3 tst_formatx3.nc
 
 exit $ECODE
