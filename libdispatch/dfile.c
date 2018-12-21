@@ -1858,7 +1858,7 @@ NC_create(const char *path0, int cmode, size_t initialsz,
 #endif
 
     memset(&model,0,sizeof(model));
-    if((stat = NC_infermodel(path,cmode,1,0,NULL,&model,&newpath)))
+    if((stat = NC_infermodel(path,&cmode,1,0,NULL,&model,&newpath)))
 	goto done;
     if(newpath) {
 	nullfree(path);
@@ -1866,38 +1866,8 @@ NC_create(const char *path0, int cmode, size_t initialsz,
 	newpath = NULL;
     }
 
-    /* Determine the model if it was not a URL model */
-    if(model.impl == NC_FORMATX_UNDEFINED) {
-            /* if no file format flag is set in cmode, use default */
-            model.format = nc_get_default_format();
-            switch (model.format) {
-            case NC_FORMAT_NETCDF4:
-                 cmode |= NC_NETCDF4;
-                 model.impl = NC_FORMATX_NC4;
-                 break;
-            case NC_FORMAT_NETCDF4_CLASSIC:
-                 cmode |= NC_NETCDF4 | NC_CLASSIC_MODEL;
-                 model.impl = NC_FORMATX_NC4;
-                 break;
-            case NC_FORMAT_CDF5:
-                 cmode |= NC_64BIT_DATA;
-                 break;
-            case NC_FORMAT_64BIT_OFFSET:
-                 cmode |= NC_64BIT_OFFSET;
-                 break;
-            case NC_FORMAT_CLASSIC:
-		break;
-            default: break;
-            }
-    }
-    /* default dispatcher if above did not infer an implementation */
-    if (model.impl == NC_FORMATX_UNDEFINED) {
-        if (useparallel)
-            model.impl = NC_FORMATX_PNETCDF;
-        else
-            model.impl = NC_FORMATX_NC3; /* Final choice */
-    }
-
+    assert(model.format != 0 && model.impl != 0);
+    
     /* Now, check for NC_ENOTBUILT cases limited to create (so e.g. HDF4 is not listed) */
 #ifndef USE_HDF5
     if (model.impl == NC_FORMATX_NC4)
@@ -1988,7 +1958,6 @@ NC_open(const char *path0, int omode, int basepe, size_t *chunksizehintp,
     int inmemory = 0;
     int diskless = 0;
     int mmap = 0;
-    int version = 0;
     char* path = NULL;
     NCmodel model;
     char* newpath = NULL;
@@ -2041,8 +2010,8 @@ NC_open(const char *path0, int omode, int basepe, size_t *chunksizehintp,
 #endif
     
     memset(&model,0,sizeof(model));
-    /* Infer model implementation and format */
-    if((stat = NC_infermodel(path,omode,0,useparallel,parameters,&model,&newpath)))
+    /* Infer model implementation and format, possibly by reading the file */
+    if((stat = NC_infermodel(path,&omode,0,useparallel,parameters,&model,&newpath)))
 	goto done;
     if(newpath) {
 	nullfree(path);
@@ -2062,6 +2031,8 @@ NC_open(const char *path0, int omode, int basepe, size_t *chunksizehintp,
 	int hdf5built = 0;
 	int hdf4built = 0;
 	int cdf5built = 0;
+	int udf0built = 0;
+	int udf1built = 0;
 #ifdef USE_NETCDF4
 	hdf5built = 1;
 #ifdef USE_HDF4
@@ -2071,41 +2042,24 @@ NC_open(const char *path0, int omode, int basepe, size_t *chunksizehintp,
 #ifdef ENABLE_CDF5
 	cdf5built = 1;
 #endif
+        if(UDF0_dispatch_table != NULL)
+	    udf0built = 1;
+        if(UDF1_dispatch_table != NULL)
+	    udf1built = 1;
+
 	if(!hdf5built && model.impl == NC_FORMATX_NC4)
   	    {stat = NC_ENOTBUILT; goto done;}
 	if(!hdf4built && model.impl == NC_FORMATX_NC_HDF4)
   	    {stat = NC_ENOTBUILT; goto done;}
-	if(!cdf5built && model.impl == NC_FORMATX_NC3 && version == 5)
+	if(!cdf5built && model.impl == NC_FORMATX_NC3 && model.version == 5)
   	    {stat = NC_ENOTBUILT; goto done;}
-    }
-    
-    /* Force flag consistency */
-    switch (model.impl) {
-    case NC_FORMATX_NC4:
-    case NC_FORMATX_NC_HDF4:
-    case NC_FORMATX_DAP4:
-    case NC_FORMATX_UDF0:
-    case NC_FORMATX_UDF1:
-	omode |= NC_NETCDF4;
-	break;
-    case NC_FORMATX_DAP2:
-	omode &= ~NC_NETCDF4;
-	omode &= ~NC_64BIT_OFFSET;
-	break;
-    case NC_FORMATX_NC3:
-	omode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
-	if(version == 2) omode |= NC_64BIT_OFFSET;
-	else if(version == 5) omode |= NC_64BIT_DATA;
-	break;
-    case NC_FORMATX_PNETCDF:
-	omode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
-	if(version == 2) omode |= NC_64BIT_OFFSET;
-	else if(version == 5) omode |= NC_64BIT_DATA;
-	break;
-    default:
-	{stat = NC_ENOTNC; goto done;}
-    }
-    
+	if(!cdf5built && model.impl == NC_FORMATX_NC3 && model.version == 5)
+  	    {stat = NC_ENOTBUILT; goto done;}
+	if(!udf0built && model.impl == NC_FORMATX_UDF0)
+  	    {stat = NC_ENOTBUILT; goto done;}
+	if(!udf1built && model.impl == NC_FORMATX_UDF1)
+  	    {stat = NC_ENOTBUILT; goto done;}
+    }    
     /* Figure out what dispatcher to use */
     if (!dispatcher) {
 	switch (model.impl) {

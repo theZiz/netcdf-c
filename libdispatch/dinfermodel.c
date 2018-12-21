@@ -20,9 +20,6 @@
 #include "netcdf_mem.h"
 #include "fbits.h"
 
-/* Define a mask of all possible format flags */
-#define ANYFORMAT (NC_64BIT_OFFSET|NC_64BIT_DATA|NC_CLASSIC_MODEL|NC_NETCDF4)
-
 /** @internal Magic number for HDF5 files. To be consistent with
  * H5Fis_hdf5, use the complete HDF5 magic number */
 static char HDF5_SIGNATURE[MAGIC_NUMBER_LEN] = "\211HDF\r\n\032\n";
@@ -217,6 +214,11 @@ NC_metainfer(const char* path, int cmode, NCmodel* model, char** newpathp, NCURI
     
     /* Now process the cmode; may override some already set flags */
     {
+	/* If no format flags are set, then use default format */
+	if(!fIsSet(cmode,ANYFORMAT)) {
+            model->format = nc_get_default_format();
+	}
+
 	if(fIsSet(cmode,NC_64BIT_OFFSET)) {
 	   if(model->format == 0)
 		model->format = NC_FORMAT_NC3;
@@ -238,12 +240,18 @@ NC_metainfer(const char* path, int cmode, NCmodel* model, char** newpathp, NCURI
 		model->version = 5;
 	   else {stat = NC_EINVAL; goto done;}
 	}
-	if(fIsSet(cmode,NC_CLASSIC_MODEL)) {
-	   if(model->format == 0)
-		model->format = NC_FORMAT_NETCDF4;
-	   if(model->format == NC_FORMAT_NETCDF4 && model->version == 0)
-		model->version = 2;
-	   else {stat = NC_EINVAL; goto done;}
+	if(fIsSet(cmode,NC_UDF0)) {
+	    model->format = NC_FORMAT_NETCDF4;
+    	    model->impl = NC_FORMATX_UDF0;
+	    model->version = 6;
+	}
+	if(fIsSet(cmode,NC_UDF1)) {
+	    model->format = NC_FORMAT_NETCDF4;
+    	    model->impl = NC_FORMATX_UDF1;
+	    model->version = 7;
+	}
+        if(fIsSet(cmode,NC_CLASSIC_MODEL)) {
+	    /* ignore here; consider adding a new format type */
 	}
 	if(fIsSet(cmode,NC_INMEMORY)) {
 	    if(model->iosp != 0 && model->iosp != NC_IOSP_FILE)
@@ -267,23 +275,21 @@ NC_metainfer(const char* path, int cmode, NCmodel* model, char** newpathp, NCURI
 	    model->iosp = NC_IOSP_DAP2;
 	    model->impl = NC_FORMATX_DAP2;
 	}
-    } else if(!isurl && model->format != 0) {
+    } /* else defer to higher level */
+#if 0
+	/* Do not set the implementation yet */
 	switch (model->format) {
 	case NC_FORMAT_CLASSIC:
-	    model->impl = NC_FORMATX_NC3;
 	    model->version = 1;
 	    break;
 	case NC_FORMAT_64BIT_OFFSET:
-	    model->impl = NC_FORMATX_NC3;
 	    model->version = 2;
 	    break;
 	case NC_FORMAT_64BIT_DATA:
-	    model->impl = NC_FORMATX_NC3;
 	    model->version = 5;
 	    break;
 	case NC_FORMAT_NETCDF4:
 	case NC_FORMAT_NETCDF4_CLASSIC:
-	    model->impl = NC_FORMATX_NC4;
 	    model->version = 5;
 	    break;
 	default: break;
@@ -314,6 +320,9 @@ NC_metainfer(const char* path, int cmode, NCmodel* model, char** newpathp, NCURI
 	    break;
         }
     }
+#else /*0*/
+    if(model->format == 0) {stat = NC_ENOTNC; goto done;} /* could not interpret */
+#endif
 
 done:
     if(stat) {
@@ -389,11 +398,12 @@ done:
 */
 
 int
-NC_infermodel(const char* path, int omode, int iscreate, int useparallel, void* params, NCmodel* model, char** newpathp)
+NC_infermodel(const char* path, int* omodep, int iscreate, int useparallel, void* params, NCmodel* model, char** newpathp)
 {
     int stat = NC_NOERR;
     char* newpath = NULL;
     NCURI* uri = NULL;
+    int omode = *omodep;
 
     /* First get whatever we can from path+cmode */
     stat = NC_metainfer(path,omode,model,&newpath,&uri);
@@ -401,23 +411,79 @@ NC_infermodel(const char* path, int omode, int iscreate, int useparallel, void* 
     if(newpath) path = newpath;
 
     if(model->impl == 0) {
-        if(iscreate)
-	    {stat = NC_EINVAL; goto done;} /* cannot infer how to process dataset */
-        /* At this point, we may have an impl but do not have a format,
-           so we need to try to read the file */
-        if(!iscreate) {
+        if(iscreate) {
+	    assert(model->iosp == NC_IOSP_FILE || model->iosp == NC_IOSP_MEMORY);
+	    /* See if we can infer the implementation */
+	    switch (model->format) {
+            case NC_FORMAT_NETCDF4:
+                 omode |= NC_NETCDF4;
+                 model->impl = NC_FORMATX_NC4;
+                 break;
+            case NC_FORMAT_NETCDF4_CLASSIC:
+                 omode |= NC_NETCDF4 | NC_CLASSIC_MODEL;
+                 model->impl = NC_FORMATX_NC4;
+                 break;
+            case NC_FORMAT_CDF5:
+                 omode |= NC_64BIT_DATA;
+                 model->impl = NC_FORMATX_NC3;
+                 break;
+            case NC_FORMAT_64BIT_OFFSET:
+                 omode |= NC_64BIT_OFFSET;
+                 model->impl = NC_FORMATX_NC3;
+                 break;
+            case NC_FORMAT_CLASSIC:
+                 model->impl = NC_FORMATX_NC3;
+		 break;
+            default: break;
+            }
+            /* default dispatcher if above did not infer an implementation */
+            if (model->impl == 0)
+	        model->impl = NC_FORMATX_NC3; /* Final choice */
+	    /* Check for using PNETCDF */
+	    if (model->impl== NC_FORMATX_NC3 && useparallel && model->iosp == NC_IOSP_FILE)
+	        model->impl = NC_FORMATX_PNETCDF; /* Use this instead */
+
+	} else { /*!iscreate*/
+            /* read the file to see what it is */
 	    if(model->iosp == 0)
-	    	abort();
+	        abort();
 	    if(isreadable(model->iosp)) { /* Ok, we need to try to read the file */
 	        if((stat = check_file_type(path, omode, useparallel, params, model, uri))) goto done;
 	    }
 	}
     }
 	
+    /* Force flag consistency */
+    switch (model->impl) {
+    case NC_FORMATX_NC4:
+    case NC_FORMATX_NC_HDF4:
+    case NC_FORMATX_DAP4:
+    case NC_FORMATX_UDF0:
+    case NC_FORMATX_UDF1:
+	omode |= NC_NETCDF4;
+	break;
+    case NC_FORMATX_DAP2:
+	omode &= ~NC_NETCDF4;
+	omode &= ~NC_64BIT_OFFSET;
+	break;
+    case NC_FORMATX_NC3:
+	omode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
+	if(model->version == 2) omode |= NC_64BIT_OFFSET;
+	else if(model->version == 5) omode |= NC_64BIT_DATA;
+	break;
+    case NC_FORMATX_PNETCDF:
+	omode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
+	if(model->version == 2) omode |= NC_64BIT_OFFSET;
+	else if(model->version == 5) omode |= NC_64BIT_DATA;
+	break;
+    default:
+	{stat = NC_ENOTNC; goto done;}
+    }
 done:
     if(uri) ncurifree(uri);
     if(stat == NC_NOERR && newpathp) {*newpathp = newpath; newpath = NULL;}
     nullfree(newpath);
+    *omodep = omode; /* in/out */
     return stat;
 }
 

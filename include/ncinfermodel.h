@@ -32,7 +32,7 @@ typedef struct NCmodel {
 } NCmodel;
 
 /* Define a mask of all possible format flags */
-#define ANYFORMAT (NC_64BIT_OFFSET|NC_64BIT_DATA|NC_CLASSIC_MODEL|NC_NETCDF4)
+#define ANYFORMAT (NC_64BIT_OFFSET|NC_64BIT_DATA|NC_CLASSIC_MODEL|NC_NETCDF4|NC_UDF0|NC_UDF1)
 
 /**
 Sort info for open/read/close of
@@ -61,7 +61,7 @@ extern char UDF1_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1];
 EXTERNL int NC_testurl(const char* path);
 
 /* Infer model format and implementation */
-EXTERNL int NC_infermodel(const char* path, int omode, int iscreate, int useparallel, void* params, NCmodel* model, char** newpathp);
+EXTERNL int NC_infermodel(const char* path, int* omodep, int iscreate, int useparallel, void* params, NCmodel* model, char** newpathp);
 
 /*
 Infer as much as possible from path plus the omode
