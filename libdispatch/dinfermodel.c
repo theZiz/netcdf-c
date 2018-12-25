@@ -707,6 +707,13 @@ openmagic(struct MagicFile* file)
 	}
 	break;
 
+#ifdef ENABLE_S3
+    case NC_IOSP_S3:
+	/* Open the curl handle */
+	if((status=nc_s3_open(path,&file->curl,&file->filelen))) goto done;
+	break;
+#endif
+
     default: assert(0);
     }
 
@@ -755,6 +762,21 @@ readmagic(struct MagicFile* file, long pos, char* magic)
 	    }
 	}
 	break;
+
+#ifdef ENABLE_S3
+    case NC_IOSP_S3: {
+	NCbytes* buf = ncbytesnew();
+	size_t start = (size_t)pos;
+	size_t count = MAGIC_NUMBER_LEN;
+	status = nc_s3_read(file->curl,start,count,buf);
+	if(ncbytesength(buf) != count)
+	    status = NC_EINVAL;
+	else
+	    memcpy(magic,ncbytescontents(buf),count);
+	ncbytesfree(buf);
+        } break;
+#endif
+
     default: assert(0);
     }
 
@@ -792,6 +814,13 @@ closemagic(struct MagicFile* file)
 	    if(file->fp) fclose(file->fp);
         }
 	break;
+
+#ifdef ENABLE_S3
+     case NC_IOSP_S3:
+	status = nc_s3_close(file->curl);
+	break;
++#endif
+
     default: assert(0);
     }
 

@@ -49,6 +49,9 @@ struct MagicFile {
 #ifdef USE_PARALLEL
     MPI_File fh;
 #endif
+#ifdef ENABLE_S3
+    void* curl; /* avoid need to include curl.h */
+#endif
 };
 
 /* User-defined formats. */
