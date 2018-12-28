@@ -24,6 +24,8 @@
 #include "nclist.h"
 #include "ncs3.h"
 
+#undef TRACE
+
 #define CURLERR(e) (e)
 
 /* Mnemonics */
@@ -36,10 +38,25 @@ static int execute(CURL* curl, int headcmd, long* httpcodep);
 static int headerson(CURL* curl, NClist* list);
 static void headersoff(CURL* curl);
 
-void s3flush() {
+#ifdef TRACE
+static void
+s3flush() {
 fflush(stderr);
 fflush(stdout);
 }
+
+static void
+Trace(const char* fcn)
+{
+    fprintf(stdout,"xxx: %s\n",fcn);
+    s3flush();
+}
+#else
+#define s3flush()
+#define Trace(fcn)
+#endif /*TRACE*/
+
+/**************************************************/
 
 /**
 @param objecturl url we propose to access
@@ -54,6 +71,8 @@ nc_s3_open(const char* objecturl, void** curlp, long long* filelenp)
     CURL* curl = NULL;
     int i;
     NClist* list = NULL; 
+
+    Trace("open");
 
     /* initialize curl*/
     curl = curl_easy_init();
@@ -87,6 +106,9 @@ nc_s3_close(void* curl0)
 {
     int stat = NC_NOERR;
     CURL* curl = curl0;
+
+    Trace("close");
+
     if(curl != NULL)
 	(void)curl_easy_cleanup(curl);
 s3flush();
@@ -108,6 +130,8 @@ nc_s3_read(CURL* curl, const char* objecturl, fileoffset_t start, fileoffset_t c
     char range[64];
     long httpcode = 200;
     CURLcode cstat = CURLE_OK;
+
+    Trace("read");
 
     if(count == 0)
 	goto done; /* do not attempt to read */
@@ -138,6 +162,8 @@ WriteMemoryCallback(void *ptr, size_t size, size_t nmemb, void *data)
 {
     NCbytes* buf = data;
     size_t realsize = size * nmemb;
+
+    Trace("WriteMemoryCallback");
     if(realsize == 0)
         nclog(NCLOGWARN,"WriteMemoryCallback: zero sized chunk");
     ncbytesappendn(buf, ptr, realsize);
@@ -155,6 +181,7 @@ HeaderCallback(char *buffer, size_t size, size_t nitems, void *data)
     size_t i;
     int havecolon;
 
+    Trace("HeaderCallback");
     if(realsize == 0)
         nclog(NCLOGWARN,"HeaderCallback: zero sized chunk");
     i = 0;
@@ -208,7 +235,6 @@ setupconn(CURL* curl, const char* objecturl, NCbytes* buf)
     }
     /* Turn off header capture */
     headersoff(curl);
-    cstat = CURLERR(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL));
 
 done:
     return stat;
@@ -254,9 +280,6 @@ headerson(CURL* curl, NClist* list)
     int stat = NC_NOERR;
     CURLcode cstat = CURLE_OK;
 
-    cstat = curl_easy_setopt(curl, CURLOPT_HEADER, 1L); 
-    if(cstat != CURLE_OK) goto fail;
-
     cstat = CURLERR(curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback));
     if(cstat != CURLE_OK) goto fail;
     cstat = CURLERR(curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void*)list));
@@ -274,10 +297,9 @@ headersoff(CURL* curl)
 {
     (void)CURLERR(curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, NULL));
     (void)CURLERR(curl_easy_setopt(curl, CURLOPT_HEADERDATA, NULL));
-    (void)curl_easy_setopt(curl, CURLOPT_HEADER, 0L); 
 }
 
-#if 0
+#ifdef IGNORE
 static void
 reset(CURL* curl)
 {

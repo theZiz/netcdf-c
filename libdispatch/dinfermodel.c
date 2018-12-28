@@ -23,6 +23,8 @@
 #include "ncs3.h"
 #endif
 
+#undef DEBUG
+
 /**
 Sort info for open/read/close of
 file when searching for magic numbers
@@ -47,6 +49,24 @@ struct MagicFile {
 /** @internal Magic number for HDF5 files. To be consistent with
  * H5Fis_hdf5, use the complete HDF5 magic number */
 static char HDF5_SIGNATURE[MAGIC_NUMBER_LEN] = "\211HDF\r\n\032\n";
+
+#ifdef DEBUG
+static void
+fail(int err)
+{
+    return;
+}
+
+static int
+check(int err)
+{
+    if(err != NC_NOERR)
+	fail(err);
+    return err;
+}
+#else
+#define check(err) (err)
+#endif
 
 /*
 Define a table of legal "mode=" string values.
@@ -155,7 +175,7 @@ parseurlmode(const char* modestr0, char** listp)
 
 done:
     nullfree(modestr);
-    return stat;
+    return check(stat);
 }
 
 /* Given a mode= argument, fill in the matching part of the model */
@@ -181,7 +201,7 @@ processmodearg(const char* arg, NCmodel* model)
 	}
     }
 done:
-    return stat;
+    return check(stat);
 }
 
 /* Parse url fragment mode tag for model info */
@@ -201,7 +221,7 @@ url_getmode(const char* modestr, NCmodel* model)
     }
 done:
     nullfree(args);
-    return stat;    
+    return check(stat);    
 }
 
 /*
@@ -350,7 +370,7 @@ done:
 	    *newpathp = ncuribuild(uri,NULL,NULL,NCURIALL);
         if(urip) *urip = uri;
     }
-    return stat;
+    return check(stat);
 }
 
 static int
@@ -397,7 +417,7 @@ processuri(NCURI* uri, NCmodel* model)
 	}
     }
 done:
-    return stat;
+    return check(stat);
 }
 
 /**************************************************/
@@ -502,7 +522,7 @@ done:
     if(stat == NC_NOERR && newpathp) {*newpathp = newpath; newpath = NULL;}
     nullfree(newpath);
     *omodep = omode; /* in/out */
-    return stat;
+    return check(stat);
 }
 
 static int
@@ -672,7 +692,7 @@ check_file_type(const char *path, int flags, int use_parallel,
     }
 done:
     closemagic(&magicinfo);
-    return status;
+    return check(status);
 }
 
 /**
@@ -765,7 +785,7 @@ openmagic(struct MagicFile* file)
     }
 
 done:
-    return status;
+    return check(status);
 }
 
 static int
@@ -831,7 +851,7 @@ readmagic(struct MagicFile* file, long pos, char* magic)
 
 done:
     if(file && file->fp) clearerr(file->fp);
-    return status;
+    return check(status);
 }
 
 /**
@@ -947,7 +967,7 @@ NC_interpret_magic_number(char* magic, NCmodel* model)
      goto done;
 
 done:
-     return status;
+     return check(status);
 }
 
 #ifdef DEBUG
