@@ -14,6 +14,10 @@
 #include "ncrc.h"
 #include "ncmodel.h"
 
+#ifdef ENABLE_S3
+#include "H5FDs3.h"
+#endif
+
 #define NUM_TYPES 12 /**< Number of netCDF atomic types. */
 #define CD_NELEMS_ZLIB 1 /**< Number of parameters needed for ZLIB filter. */
 
@@ -413,24 +417,21 @@ nc4_open_file(const char *path, int mode, void* parameters, NC *nc)
    if (!(nc4_info->format_file_info = calloc(1, sizeof(NC_HDF5_FILE_INFO_T))))
       BAIL(NC_ENOMEM);
 
-   h5 = (NC_HDF5_FILE_INFO_T*)nc4_info->format_file_info;
-
    /* Add struct to hold HDF5-specific group info. */
    if (!(nc4_info->root_grp->format_grp_info = calloc(1, sizeof(NC_HDF5_GRP_INFO_T))))
       BAIL(NC_ENOMEM);
 
+   h5 = (NC_HDF5_FILE_INFO_T*)nc4_info->format_file_info;
+
 #ifdef ENABLE_S3
-   if((retval=ncuriparse(path,&h5->s3.uri)) == NC_NOERR) {
-	switch (NC_urliosp(h5->s3.uri)) {
-	case NC_IOSP_S3:
-	    h5->s3.s3iosp = 1;
-	    /* Kill off any conflicting modes flags */
-	    mode &= ~(NC_WRITE|NC_DISKLESS|NC_PERSIST|NC_INMEMORY);
-	    parameters = NULL; /* kill off parallel */	    
-	    break;
-	default: BAIL(NC_EURL);
-	}
-   }
+   /* See if we want the Simple S3 protocol */
+   if(nc->model->iosp == NC_IOSP_S3) {
+	h5->s3.s3iosp = 1;
+        /* Kill off any conflicting modes flags */
+        mode &= ~(NC_WRITE|NC_DISKLESS|NC_PERSIST|NC_INMEMORY);
+	parameters = NULL; /* kill off parallel */	    
+   } else
+	h5->s3.s3iosp = 0;
 #endif /*ENABLE_S3*/
 
    nc4_info->mem.inmemory = ((mode & NC_INMEMORY) == NC_INMEMORY);
@@ -523,24 +524,20 @@ nc4_open_file(const char *path, int mode, void* parameters, NC *nc)
    }
    else
    if(nc4_info->mem.diskless) {   /* Process  NC_DISKLESS */
-      NC_HDF5_FILE_INFO_T *hdf5_info;
       size_t min_incr = 65536; /* Minimum buffer increment */
       /* Configure FAPL to use the core file driver */
       if (H5Pset_fapl_core(fapl_id, min_incr, (nc4_info->mem.persist?1:0)) < 0)
 	BAIL(NC_EHDFERR);
-      hdf5_info = (NC_HDF5_FILE_INFO_T *)nc4_info->format_file_info;
       /* Open the HDF5 file. */
-      if ((hdf5_info->hdfid = H5Fopen(path, flags, fapl_id)) < 0)
+      if ((h5->hdfid = H5Fopen(path, flags, fapl_id)) < 0)
          BAIL(NC_EHDFERR);
    }
 #ifdef ENABLE_S3
    else
    if(h5->s3.s3iosp) {   /* Arrange to use the S3 file driver */
       /* Configure FAPL to use the S3 file driver */
-#if 0
-      if (H5Pset_fapl_core(fapl_id, min_incr, (nc4_info->mem.persist?1:0)) < 0)
+      if (H5Pset_fapl_s3(fapl_id) < 0)
 	BAIL(NC_EHDFERR);
-#endif
       /* Open the HDF5 file. */
       if ((h5->hdfid = H5Fopen(path, flags, fapl_id)) < 0)
          BAIL(NC_EHDFERR);
@@ -548,11 +545,8 @@ nc4_open_file(const char *path, int mode, void* parameters, NC *nc)
 #endif
    else
    {
-      NC_HDF5_FILE_INFO_T *hdf5_info;
-      hdf5_info = (NC_HDF5_FILE_INFO_T *)nc4_info->format_file_info;
-
       /* Open the HDF5 file. */
-      if ((hdf5_info->hdfid = H5Fopen(path, flags, fapl_id)) < 0)
+      if ((h5->hdfid = H5Fopen(path, flags, fapl_id)) < 0)
          BAIL(NC_EHDFERR);
    }
 

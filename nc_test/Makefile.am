@@ -35,6 +35,10 @@ endif
 endif
 endif
 
+if ENABLE_S3
+TESTPROGRAMS += tst_s3
+endif
+
 # These are the source files for the main workhorse test program,
 # nc_test. If you pass nc_test, you are doing well.
 nc_test_SOURCES = nc_test.c error.c test_get.c test_put.c test_read.c	\

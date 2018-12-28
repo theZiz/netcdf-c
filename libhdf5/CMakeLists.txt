@@ -10,6 +10,10 @@ SET(libnchdf5_SOURCES nc4hdf.c nc4info.c hdf5file.c hdf5attr.c
 hdf5dim.c hdf5grp.c hdf5type.c hdf5internal.c hdf5create.c hdf5open.c
 hdf5var.c nc4mem.c nc4memcb.c hdf5cache.c hdf5dispatch.c)
 
+IF(ENABLE_S3)
+SET(libnchdf5_la_SOURCES ${libnchdf5_SOURCES} H5FDs3.c)
+ENDIF()
+
 # Build the HDF4 dispatch layer as a library that will be included in
 # the netCDF library.
 add_library(netcdfhdf5 OBJECT ${libnchdf5_SOURCES})

@@ -11,6 +11,10 @@
 #include "config.h"
 #include "hdf5internal.h"
 
+#ifdef ENABLE_S3
+#include "H5FDs3.h"
+#endif
+
 static NC_Dispatch NC4_dispatcher = {
 
 NC_FORMATX_NC4,
@@ -116,9 +120,11 @@ int
 NC_HDF5_initialize(void)
 {
    HDF5_dispatch_table = &NC4_dispatcher;
-
    if (!nc4_hdf5_initialized)
       nc4_hdf5_initialize();
+#ifdef ENABLE_S3
+   (void)H5FD_s3_init();
+#endif  
    return NC4_provenance_init();
 }
 
@@ -131,6 +137,6 @@ NC_HDF5_initialize(void)
 int
 NC_HDF5_finalize(void)
 {
-    nc4_hdf5_finalize();
+    (void)nc4_hdf5_finalize();
     return NC_NOERR;
 }

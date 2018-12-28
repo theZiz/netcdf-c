@@ -172,8 +172,8 @@ Use this in mode flags for both nc_create() and nc_open(). */
  */
 /**@{*/
 #define NC_FORMAT_CLASSIC         (1)
-/* After adding CDF5 support, this flag
-   is somewhat confusing. So, it is renamed.
+/* After adding CDF5 support, the NC_FORMAT_64BIT
+   flag is somewhat confusing. So, it is renamed.
    Note that the name in the contributed code
    NC_FORMAT_64BIT was renamed to NC_FORMAT_CDF2
 */
