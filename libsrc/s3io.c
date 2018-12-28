@@ -38,6 +38,21 @@
 
 #define DEFAULTPAGESIZE 16384
 
+#if 0
+#ifndef S3_MAXBLOCKSIZE
+#define S3_MAXBLOCKSIZE 268435456 /* sanity check, about X_SIZE_T_MAX/8 */
+#endif
+
+#undef MIN  /* system may define MIN somewhere and complain */
+#define MIN(mm,nn) (((mm) < (nn)) ? (mm) : (nn))
+
+#if !defined(NDEBUG) && !defined(X_INT_MAX)
+#define  X_INT_MAX 2147483647
+#endif
+
+#endif /*0*/
+>>>>>>> dc9909c0f780fd64db7804b4d52a11b418411ad3
+
 /* Private data for s3 */
 
 typedef struct NCS3IO {

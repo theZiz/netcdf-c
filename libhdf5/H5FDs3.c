@@ -766,7 +766,6 @@ static herr_t
 H5FD_s3_write(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl_id,
     haddr_t addr, size_t size, const void *buf)
 {
-    H5FD_s3_t    *file = (H5FD_s3_t*)_file;
     static const char *func = "H5FD_s3_write";  /* Function Name for error reporting */
 
     /* Quiet the compiler */
