@@ -96,7 +96,7 @@ nc_s3_open(const char* objecturl, void** curlp, long long* filelenp)
 	}
     }  
 done:
-    if(list) nclistfreeall(list);
+    nclistfreeall(list);
 s3flush();
     return stat;
 }
@@ -175,9 +175,9 @@ HeaderCallback(char *buffer, size_t size, size_t nitems, void *data)
 {
     NClist* list = data;
     size_t realsize = size * nitems;
-    char* name;
-    char* value;
-    char* p;
+    char* name = NULL;
+    char* value = NULL;
+    char* p = NULL;
     size_t i;
     int havecolon;
 
@@ -185,21 +185,27 @@ HeaderCallback(char *buffer, size_t size, size_t nitems, void *data)
     if(realsize == 0)
         nclog(NCLOGWARN,"HeaderCallback: zero sized chunk");
     i = 0;
+    /* Look for colon separator */
     for(p=buffer;(i < realsize) && (*p != ':');p++,i++);
     havecolon = (i < realsize);
+    if(i == 0)
+        nclog(NCLOGWARN,"HeaderCallback: malformed header: %s",buffer);
     name = malloc(i+1);
     memcpy(name,buffer,i);
-    name[i+1] = '\0';
+    name[i] = '\0';
     value = NULL;
     if(havecolon) {
 	size_t vlen = (realsize - i);
         value = malloc(vlen+1);
 	p++; /* skip colon */
         memcpy(value,p,vlen);
-        value[vlen+1] = '\0';
+        value[vlen] = '\0';
     }
     nclistpush(list,name);
+    name = NULL;
+    if(value == NULL) value = strdup("");
     nclistpush(list,value);
+    value = NULL;
     return realsize;    
 }
 
