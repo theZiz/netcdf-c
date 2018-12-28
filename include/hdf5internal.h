@@ -51,10 +51,15 @@
 /** This is the name of the name HDF5 dimension scale attribute. */
 #define HDF5_DIMSCALE_NAME_ATT_NAME "NAME"
 
-/** Strut to hold HDF5-specific info for the file. */
-typedef struct  NC_HDF5_FILE_INFO
-{
+/** Struct to hold HDF5-specific info for the file. */
+typedef struct NC_HDF5_FILE_INFO {
    hid_t hdfid;
+#ifdef ENABLE_S3
+   struct S3 {
+	NCURI* uri; /* Parse of the incoming path, if url */
+	int s3iosp; /* We are using the S3 virtual file driver */
+   } s3;
+#endif
 } NC_HDF5_FILE_INFO_T;
 
 /* This is a struct to handle the dim metadata. */

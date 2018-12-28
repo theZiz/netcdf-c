@@ -907,6 +907,11 @@ AC_MSG_RESULT($enable_s3)
 # Need curl for S3
 if test "x$found_curl" = xno ; then
   AC_MSG_ERROR([curl required for S3 support. Install curl or build without --enable-s3.])
+  enable_s3=no
+fi
+
+if test "x$enable_s3" = xyes; then
+    AC_DEFINE([ENABLE_S3], [1], [if true, support s3-based files])
 fi
 
 AC_FUNC_ALLOCA

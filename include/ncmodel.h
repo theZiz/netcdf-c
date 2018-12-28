@@ -34,34 +34,17 @@ typedef struct NCmodel {
 /* Define a mask of all possible format flags */
 #define ANYFORMAT (NC_64BIT_OFFSET|NC_64BIT_DATA|NC_CLASSIC_MODEL|NC_NETCDF4|NC_UDF0|NC_UDF1)
 
-/**
-Sort info for open/read/close of
-file when searching for magic numbers
-*/
-struct MagicFile {
-    const char* path;
-    NCURI* uri;
-    NCmodel* model;
-    long long filelen;
-    int use_parallel;
-    void* parameters; /* !NULL if inmemory && !diskless */
-    FILE* fp;
-#ifdef USE_PARALLEL
-    MPI_File fh;
-#endif
-#ifdef ENABLE_S3
-    void* curl; /* avoid need to include curl.h */
-#endif
-};
+/* Keep compiler quiet */
+struct NCURI;
+struct NC_dispatch;
 
-/* User-defined formats. */
-extern NC_Dispatch* UDF0_dispatch_table;
-extern char UDF0_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1];
-extern NC_Dispatch* UDF1_dispatch_table;
-extern char UDF1_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1];
-
+#if 0
 /* return 1 if path looks like a url; 0 otherwise */
 EXTERNL int NC_testurl(const char* path);
+#endif
+
+/* return first IOSP or NULL if none */
+EXTERNL int NC_urliosp(struct NCURI* u);
 
 /* Infer model format and implementation */
 EXTERNL int NC_infermodel(const char* path, int* omodep, int iscreate, int useparallel, void* params, NCmodel* model, char** newpathp);
@@ -70,7 +53,7 @@ EXTERNL int NC_infermodel(const char* path, int* omodep, int iscreate, int usepa
 Infer as much as possible from path plus the omode
 May rewrite path.
 */
-EXTERNL int NC_pathinfer(const char* path, int omode, NCmodel* model, char** newpathp, NCURI** urip);
+EXTERNL int NC_pathinfer(const char* path, int omode, NCmodel* model, char** newpathp, struct NCURI** urip);
 
 /**
  * Provide a hidden interface to allow utilities
@@ -81,6 +64,7 @@ EXTERNL int NC_pathinfer(const char* path, int omode, NCmodel* model, char** new
  */
 EXTERNL int nc__testurl(const char* path, char** basenamep);
 
+#if 0
 /* allow access url parse and params without exposing nc_url.h */
 EXTERNL int NCDAP_urlparse(const char* s, void** dapurl);
 EXTERNL void NCDAP_urlfree(void* dapurl);
@@ -89,5 +73,6 @@ EXTERNL const char* NCDAP_urllookup(void* dapurl, const char* param);
 /* Ping a specific server */
 EXTERNL int NCDAP2_ping(const char*);
 EXTERNL int NCDAP4_ping(const char*);
+#endif
 
 #endif /*NCINFERMODEL_H*/

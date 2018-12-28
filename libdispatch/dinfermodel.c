@@ -16,19 +16,37 @@
 
 #include "ncdispatch.h"
 #include "ncwinpath.h"
-#include "ncinfermodel.h"
 #include "netcdf_mem.h"
 #include "fbits.h"
+#include "ncbytes.h"
+#ifdef ENABLE_S3
+#include "ncs3.h"
+#endif
+
+/**
+Sort info for open/read/close of
+file when searching for magic numbers
+*/
+struct MagicFile {
+    const char* path;
+    struct NCURI* uri;
+    NCmodel* model;
+    fileoffset_t filelen;
+    int use_parallel;
+    void* parameters; /* !NULL if inmemory && !diskless */
+    FILE* fp;
+#ifdef USE_PARALLEL
+    MPI_File fh;
+#endif
+#ifdef ENABLE_S3
+    void* curl; /* avoid need to include curl.h */
+    char* curlurl; /* url to use with CURLOPT_SET_URL */
+#endif
+};
 
 /** @internal Magic number for HDF5 files. To be consistent with
  * H5Fis_hdf5, use the complete HDF5 magic number */
 static char HDF5_SIGNATURE[MAGIC_NUMBER_LEN] = "\211HDF\r\n\032\n";
-
-/* User-defined formats. */
-NC_Dispatch *UDF0_dispatch_table = NULL;
-char UDF0_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1] = "";
-NC_Dispatch *UDF1_dispatch_table = NULL;
-char UDF1_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1] = "";
 
 /*
 Define a table of legal "mode=" string values.
@@ -499,6 +517,7 @@ isreadable(int iosp)
 }
 
 /**************************************************/
+#if 0
 /* return 1 if path looks like a url; 0 otherwise */
 int
 NC_testurl(const char* path)
@@ -521,6 +540,32 @@ NC_testurl(const char* path)
 	}
 	ncurifree(tmpurl);
 	return isurl;
+    }
+    return 0;
+}
+#endif
+
+/* return first IOSP or NULL if none */
+int
+NC_urliosp(NCURI* u)
+{
+    int stat = NC_NOERR;
+    const char* modestr = NULL;
+    char* args = NULL;
+    char* p = NULL;
+    struct LEGALMODES* legal = legalmodes;
+    
+    modestr = ncurilookup(u,"mode");
+    if(modestr == NULL) return 0;
+    if((stat=parseurlmode(modestr,&args))) return 0;
+    p = args;
+    for(;;) {
+	if(*p == '\0') break;
+        for(;legal->tag;legal++) {
+	    if(strcmp(legal->tag,p)==0 && legal->iosp != 0)
+		return legal->iosp;
+	}
+	p += strlen(p)+1;
     }
     return 0;
 }
@@ -647,7 +692,7 @@ openmagic(struct MagicFile* file)
         assert(meminfo != NULL);
 	file->filelen = (long long)meminfo->size;
 	} break;
-    case NC_IOSP_FILE:
+    case NC_IOSP_FILE: {
 #ifdef USE_PARALLEL
         if (file->use_parallel) {
 	    int retval;
@@ -704,14 +749,16 @@ openmagic(struct MagicFile* file)
 #endif
 	    }
 	    rewind(file->fp);
-	}
-	break;
+	  }
+	} break;
 
 #ifdef ENABLE_S3
-    case NC_IOSP_S3:
+    case NC_IOSP_S3: {
+	/* Construct a URL minus any fragment */
+        file->curlurl = ncuribuild(file->uri,NULL,NULL,NCURISVC);
 	/* Open the curl handle */
-	if((status=nc_s3_open(path,&file->curl,&file->filelen))) goto done;
-	break;
+	if((status=nc_s3_open(file->curlurl,&file->curl,&file->filelen))) goto done;
+	} break;
 #endif
 
     default: assert(0);
@@ -766,13 +813,15 @@ readmagic(struct MagicFile* file, long pos, char* magic)
 #ifdef ENABLE_S3
     case NC_IOSP_S3: {
 	NCbytes* buf = ncbytesnew();
-	size_t start = (size_t)pos;
-	size_t count = MAGIC_NUMBER_LEN;
-	status = nc_s3_read(file->curl,start,count,buf);
-	if(ncbytesength(buf) != count)
-	    status = NC_EINVAL;
-	else
-	    memcpy(magic,ncbytescontents(buf),count);
+	fileoffset_t start = (size_t)pos;
+	fileoffset_t count = MAGIC_NUMBER_LEN;
+	status = nc_s3_read(file->curl,file->curlurl,start,count,buf);
+	if(status == NC_NOERR) {
+	    if(ncbyteslength(buf) != count)
+	        status = NC_EINVAL;
+	    else
+	        memcpy(magic,ncbytescontents(buf),count);
+	}
 	ncbytesfree(buf);
         } break;
 #endif
@@ -818,8 +867,9 @@ closemagic(struct MagicFile* file)
 #ifdef ENABLE_S3
      case NC_IOSP_S3:
 	status = nc_s3_close(file->curl);
+	nullfree(file->curlurl);
 	break;
-+#endif
+#endif
 
     default: assert(0);
     }
@@ -922,4 +972,3 @@ printmagic(const char* tag, char* magic, struct MagicFile* f)
     fflush(stderr);
 }
 #endif
-

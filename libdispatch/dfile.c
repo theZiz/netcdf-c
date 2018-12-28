@@ -12,6 +12,7 @@
 
 #include "config.h"
 #include <stdlib.h>
+#include <stdio.h>
 #ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
@@ -30,9 +31,17 @@
 #include "netcdf_mem.h"
 #include "ncwinpath.h"
 #include "fbits.h"
-#include "ncinfermodel.h"
 
 extern int NC_initialized; /**< True when dispatch table is initialized. */
+
+/* User-defined formats. */
+NC_Dispatch *UDF0_dispatch_table = NULL;
+char UDF0_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1] = "";
+NC_Dispatch *UDF1_dispatch_table = NULL;
+char UDF1_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1] = "";
+
+/**************************************************/
+
 
 /** \defgroup datasets NetCDF File and Data I/O
 
@@ -1901,8 +1910,8 @@ NC_create(const char *path0, int cmode, size_t initialsz,
         return NC_ENOTNC;
     }
 
-    /* Create the NC* instance and insert its dispatcher */
-    if((stat = new_NC(dispatcher,path,cmode,model.impl,&ncp))) goto done;
+    /* Create the NC* instance and insert its dispatcher and model */
+    if((stat = new_NC(dispatcher,path,cmode,&model,&ncp))) goto done;
 
     /* Add to list of known open files and define ext_ncid */
     add_to_NCList(ncp);
@@ -2109,7 +2118,7 @@ NC_open(const char *path0, int omode, int basepe, size_t *chunksizehintp,
     if (!dispatcher) {stat = NC_ENOTNC; goto done;}
     
     /* Create the NC* instance and insert its dispatcher */
-    if((stat = new_NC(dispatcher,path,omode,model.impl,&ncp))) goto done;
+    if((stat = new_NC(dispatcher,path,omode,&model,&ncp))) goto done;
     
     /* Add to list of known open files */
     add_to_NCList(ncp);

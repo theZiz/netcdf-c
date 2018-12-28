@@ -21,6 +21,7 @@
 #include <mpi.h>
 #endif
 #include "netcdf.h"
+#include "ncmodel.h"
 #include "nc.h"
 #include "ncuri.h"
 #ifdef USE_PARALLEL
@@ -145,6 +146,12 @@ extern int HDF4_finalize(void);
 extern size_t nc_sizevector0[NC_MAX_VAR_DIMS];
 extern size_t nc_sizevector1[NC_MAX_VAR_DIMS];
 extern ptrdiff_t nc_ptrdiffvector1[NC_MAX_VAR_DIMS];
+
+/* User-defined formats. */
+extern NC_Dispatch* UDF0_dispatch_table;
+extern char UDF0_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1];
+extern NC_Dispatch* UDF1_dispatch_table;
+extern char UDF1_magic_number[NC_MAX_MAGIC_NUMBER_LEN + 1];
 
 /* Prototypes. */
 int NC_check_nulls(int ncid, int varid, const size_t *start, size_t **count,
