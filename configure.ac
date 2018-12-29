@@ -898,19 +898,19 @@ if test "x$enable_mmap" = xyes; then
 fi
 
 # Does the user want to allow use of S3 via range headers
-AC_MSG_CHECKING([whether S3 support is enabled])
-AC_ARG_ENABLE([s3],
-              [AS_HELP_STRING([--enable-s3],
-                              [allow s3 I/O])])
-test "x$enable_s3" = xyes || enable_s3=no
-AC_MSG_RESULT($enable_s3)
+AC_MSG_CHECKING([whether S3 byte range support is enabled])
+AC_ARG_ENABLE([s3raw],
+              [AS_HELP_STRING([--enable-s3raw],
+                              [allow s3 byte-range I/O])])
+test "x$enable_s3raw" = xyes || enable_s3raw=no
+AC_MSG_RESULT($enable_s3raw)
 # Need curl for S3
 if test "x$found_curl" = xno ; then
-  AC_MSG_ERROR([curl required for S3 support. Install curl or build without --enable-s3.])
+  AC_MSG_ERROR([curl required for S3 byte range support. Install curl or build without --enable-s3raw.])
   enable_s3=no
 fi
 
-if test "x$enable_s3" = xyes; then
+if test "x$enable_s3raw" = xyes; then
     AC_DEFINE([ENABLE_S3], [1], [if true, support s3-based files])
 fi
 
@@ -1317,7 +1317,7 @@ AM_CONDITIONAL(BUILD_MMAP, [test x$enable_mmap = xyes])
 AM_CONDITIONAL(BUILD_DOCS, [test x$enable_doxygen = xyes])
 AM_CONDITIONAL(SHOW_DOXYGEN_TAG_LIST, [test x$enable_doxygen_tasks = xyes])
 AM_CONDITIONAL(ENABLE_METADATA_PERF, [test x$enable_metadata_perf = xyes])
-AM_CONDITIONAL(ENABLE_S3, [test "x$enable_s3" = xyes])
+AM_CONDITIONAL(ENABLE_S3, [test "x$enable_s3raw" = xyes])
 
 # If the machine doesn't have a long long, and we want netCDF-4, then
 # we've got problems!
@@ -1451,8 +1451,7 @@ AC_SUBST(HAS_MMAP,[$enable_mmap])
 AC_SUBST(HAS_JNA,[$enable_jna])
 AC_SUBST(RELAX_COORD_BOUND,[$enable_zero_length_coord_bound])
 AC_SUBST(HAS_ERANGE_FILL,[$enable_erange_fill])
-AC_SUBST(HAS_S3,[$enable_s3])
-
+AC_SUBST(HAS_S3,[$enable_s3raw])
 
 # Include some specifics for netcdf on windows.
 #AH_VERBATIM([_WIN32_STRICMP],
@@ -1521,7 +1520,7 @@ AX_SET_META([NC_HAS_PARALLEL4],[$enable_parallel4],[yes])
 AX_SET_META([NC_HAS_CDF5],[$enable_cdf5],[yes])
 AX_SET_META([NC_HAS_ERANGE_FILL], [$enable_erange_fill],[yes])
 AX_SET_META([NC_RELAX_COORD_BOUND], [$enable_zero_length_coord_bound],[yes])
-AX_SET_META([NC_HAS_S3],[$enable_s3],[yes])
+AX_SET_META([NC_HAS_S3],[$enable_s3raw],[yes])
 
 # Automake says that this is always run in top_builddir
 # and that srcdir is defined (== top_srcdir)

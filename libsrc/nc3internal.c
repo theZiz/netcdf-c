@@ -1205,7 +1205,7 @@ NC3_open(const char *path, int ioflags, int basepe, size_t *chunksizehintp,
     /* If the model specified the use of S3, then signal by
        a temporary hack using one of the flags in the ioflags.
     */
-    if(nc->model->iosp == NC_IOSP_S3)
+    if(nc->model->iosp == NC_IOSP_S3RAW)
         ioflags |= NC_S3;
 #endif /*ENABLE_S3*/
 

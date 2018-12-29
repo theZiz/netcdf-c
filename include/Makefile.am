@@ -25,7 +25,7 @@ noinst_HEADERS += ncdap.h
 endif
 
 if ENABLE_S3
-noinst_HEADERS += ncs3.h
+noinst_HEADERS += ncs3raw.h
 endif
 
 EXTRA_DIST = CMakeLists.txt XGetopt.h netcdf_meta.h.in

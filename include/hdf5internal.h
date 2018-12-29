@@ -55,10 +55,10 @@
 typedef struct NC_HDF5_FILE_INFO {
    hid_t hdfid;
 #ifdef ENABLE_S3
-   struct S3 {
+   struct S3RAW {
 	NCURI* uri; /* Parse of the incoming path, if url */
-	int s3iosp; /* We are using the S3 virtual file driver */
-   } s3;
+	int iosp; /* We are using the S3 rawvirtual file driver */
+   } s3raw;
 #endif
 } NC_HDF5_FILE_INFO_T;
 

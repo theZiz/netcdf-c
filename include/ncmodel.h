@@ -17,7 +17,7 @@
 #define NC_IOSP_MEMORY	(2)
 #define NC_IOSP_DAP2	(3)
 #define NC_IOSP_DAP4	(4)
-#define NC_IOSP_S3	(5)
+#define NC_IOSP_S3RAW	(5)
 #define NC_IOSP_ZARR	(6)
 
 /* Track the information hat will help us

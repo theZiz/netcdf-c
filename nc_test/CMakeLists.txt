@@ -52,10 +52,6 @@ IF(USE_PNETCDF)
   add_bin_test(nc_test tst_default_format_pnetcdf)
 ENDIF()
 
-IF(ENABLE_S3)
-  build_bin_test_no_prefix(tst_s3)
-ENDIF()
-
 IF(LARGE_FILE_TESTS)
   SET(TESTS ${TESTS} quick_large_files tst_big_var6 tst_big_var2 tst_big_rvar tst_big_var tst_large tst_large_cdf5)
   IF(NOT MSVC)
@@ -96,6 +92,13 @@ IF(BUILD_UTILITIES)
     ENDIF()
 ENDIF(BUILD_UTILITIES)
 
+IF(ENABLE_S3)
+  build_bin_test_no_prefix(tst_s3raw)
+  IF(BUILD_UTILITIES)
+    add_sh_test(nc_test test_s3raw)
+  ENDIF()
+ENDIF()
+
 # Copy some test files from current source dir to out-of-tree build dir.
 FILE(GLOB COPY_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.nc ${CMAKE_CURRENT_SOURCE_DIR}/*.sh)
 FILE(COPY ${COPY_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
@@ -107,5 +110,5 @@ ENDIF()
 ## Specify files to be distributed by 'make dist'
 FILE(GLOB CUR_EXTRA_DIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/*.c ${CMAKE_CURRENT_SOURCE_DIR}/*.h ${CMAKE_CURRENT_SOURCE_DIR}/*.sh)
 SET(CUR_EXTRA_DIST ${CUR_EXTRA_DIST} CMakeLists.txt Makefile.am)
-SET(CUR_EXTRA_DIST ${CUR_EXTRA_DIST} test_get.m4 test_put.m4 test_read.m4 test_write.m4 ref_tst_diskless2.cdl tst_diskless5.cdl)
+SET(CUR_EXTRA_DIST ${CUR_EXTRA_DIST} test_get.m4 test_put.m4 test_read.m4 test_write.m4 ref_tst_diskless2.cdl tst_diskless5.cdl ref_tst_s3raw_nc3.cdl ref_tst_s3raw_nc4.cdl)
 ADD_EXTRA_DIST("${CUR_EXTRA_DIST}")

@@ -36,7 +36,7 @@ extern int ffio_open(const char*,int,off_t,size_t,size_t*,void*,ncio**,void** co
 #  endif
 
 #ifdef ENABLE_S3
-    extern int s3io_open(const char*,int,off_t,size_t,size_t*,void*,ncio**,void** const);
+    extern int s3rawio_open(const char*,int,off_t,size_t,size_t*,void*,ncio**,void** const);
 #endif
 
      extern int memio_create(const char*,int,size_t,off_t,size_t,size_t*,void*,ncio**,void** const);
@@ -91,7 +91,7 @@ ncio_open(const char *path, int ioflags,
 #  ifdef ENABLE_S3
    /* The NC_S3 flag is a big hack until we can reorganize the ncio interface */
    if(fIsSet(ioflags,NC_S3)) {
-        return s3io_open(path,ioflags,igeto,igetsz,sizehintp,parameters,iopp,mempp);
+        return s3rawio_open(path,ioflags,igeto,igetsz,sizehintp,parameters,iopp,mempp);
    }
 #  endif /*ENABLE_S3*/
 

@@ -15,7 +15,7 @@
 #include "ncmodel.h"
 
 #ifdef ENABLE_S3
-#include "H5FDs3.h"
+#include "H5FDs3raw.h"
 #endif
 
 #define NUM_TYPES 12 /**< Number of netCDF atomic types. */
@@ -425,13 +425,13 @@ nc4_open_file(const char *path, int mode, void* parameters, NC *nc)
 
 #ifdef ENABLE_S3
    /* See if we want the Simple S3 protocol */
-   if(nc->model->iosp == NC_IOSP_S3) {
-	h5->s3.s3iosp = 1;
+   if(nc->model->iosp == NC_IOSP_S3RAW) {
+	h5->s3raw.iosp = 1;
         /* Kill off any conflicting modes flags */
         mode &= ~(NC_WRITE|NC_DISKLESS|NC_PERSIST|NC_INMEMORY);
 	parameters = NULL; /* kill off parallel */	    
    } else
-	h5->s3.s3iosp = 0;
+	h5->s3raw.iosp = 0;
 #endif /*ENABLE_S3*/
 
    nc4_info->mem.inmemory = ((mode & NC_INMEMORY) == NC_INMEMORY);
@@ -534,9 +534,9 @@ nc4_open_file(const char *path, int mode, void* parameters, NC *nc)
    }
 #ifdef ENABLE_S3
    else
-   if(h5->s3.s3iosp) {   /* Arrange to use the S3 file driver */
+   if(h5->s3raw.iosp) {   /* Arrange to use the S3 file driver */
       /* Configure FAPL to use the S3 file driver */
-      if (H5Pset_fapl_s3(fapl_id) < 0)
+      if (H5Pset_fapl_s3raw(fapl_id) < 0)
 	BAIL(NC_EHDFERR);
       /* Open the HDF5 file. */
       if ((h5->hdfid = H5Fopen(path, flags, fapl_id)) < 0)

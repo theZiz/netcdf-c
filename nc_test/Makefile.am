@@ -35,10 +35,6 @@ endif
 endif
 endif
 
-if ENABLE_S3
-TESTPROGRAMS += tst_s3
-endif
-
 # These are the source files for the main workhorse test program,
 # nc_test. If you pass nc_test, you are doing well.
 nc_test_SOURCES = nc_test.c error.c test_get.c test_put.c test_read.c	\
@@ -60,6 +56,11 @@ TESTPROGRAMS += tst_diskless6
 tst_diskless6_SOURCES = tst_diskless6.c
 endif
 
+if ENABLE_S3
+TESTPROGRAMS += tst_s3raw
+tst_s3raw_SOURCES = tst_s3raw.c
+endif
+
 # Set up the tests.
 check_PROGRAMS = $(TESTPROGRAMS)
 
@@ -77,6 +78,9 @@ TESTS += run_diskless.sh run_diskless5.sh run_inmemory.sh
 if LARGE_FILE_TESTS
 TESTS += run_diskless2.sh
 endif
+if ENABLE_S3
+TESTS += test_s3raw.sh
+endif
 endif
 
 if USE_PNETCDF
@@ -89,12 +93,14 @@ EXTRA_DIST = test_get.m4 test_put.m4 run_diskless.sh run_diskless2.sh   \
 run_diskless5.sh run_mmap.sh run_pnetcdf_test.sh test_read.m4           \
 test_write.m4 ref_tst_diskless2.cdl tst_diskless5.cdl run_inmemory.sh   \
 f03tst_open_mem.nc                                                      \
+test_s3raw.sh ref_tst_s3raw_nc3.cdl ref_tst_s3raw_nc4.cdl               \
 CMakeLists.txt
 
 # These files are created by the tests.
 CLEANFILES = nc_test_*.nc tst_*.nc t_nc.nc large_files.nc		\
 quick_large_files.nc tst_diskless3_file.cdl tst_diskless3_memory.cdl	\
-tst_diskless4.cdl ref_tst_diskless4.cdl benchmark.nc
+tst_diskless4.cdl ref_tst_diskless4.cdl benchmark.nc                    \
+tst_s3raw_nc3.cdl tst_s3raw_nc4.cdl 
 
 EXTRA_DIST += bad_cdf5_begin.nc run_cdf5.sh
 if ENABLE_CDF5

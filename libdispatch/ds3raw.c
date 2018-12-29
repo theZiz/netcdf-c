@@ -22,7 +22,7 @@
 #include "nclog.h"
 #include "ncbytes.h"
 #include "nclist.h"
-#include "ncs3.h"
+#include "ncs3raw.h"
 
 #undef TRACE
 
@@ -65,7 +65,7 @@ Trace(const char* fcn)
 */
 
 int
-nc_s3_open(const char* objecturl, void** curlp, long long* filelenp)
+nc_s3raw_open(const char* objecturl, void** curlp, long long* filelenp)
 {
     int stat = NC_NOERR;
     CURL* curl = NULL;
@@ -102,7 +102,7 @@ s3flush();
 }
 
 int
-nc_s3_close(void* curl0)
+nc_s3raw_close(void* curl0)
 {
     int stat = NC_NOERR;
     CURL* curl = curl0;
@@ -124,7 +124,7 @@ Assume URL etc has already been set.
 */
 
 int
-nc_s3_read(CURL* curl, const char* objecturl, fileoffset_t start, fileoffset_t count, NCbytes* buf)
+nc_s3raw_read(CURL* curl, const char* objecturl, fileoffset_t start, fileoffset_t count, NCbytes* buf)
 {
     int stat = NC_NOERR;
     char range[64];

@@ -30,7 +30,7 @@ endif !USE_STDIO
 endif !USE_FFIO
 
 if ENABLE_S3
-  libnetcdf3_la_SOURCES += s3io.c
+  libnetcdf3_la_SOURCES += s3rawio.c
 endif ENABLE_S3
 
 noinst_LTLIBRARIES = libnetcdf3.la

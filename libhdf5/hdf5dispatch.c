@@ -12,7 +12,7 @@
 #include "hdf5internal.h"
 
 #ifdef ENABLE_S3
-#include "H5FDs3.h"
+#include "H5FDs3raw.h"
 #endif
 
 static NC_Dispatch NC4_dispatcher = {
@@ -123,7 +123,7 @@ NC_HDF5_initialize(void)
    if (!nc4_hdf5_initialized)
       nc4_hdf5_initialize();
 #ifdef ENABLE_S3
-   (void)H5FD_s3_init();
+   (void)H5FD_s3raw_init();
 #endif  
    return NC4_provenance_init();
 }

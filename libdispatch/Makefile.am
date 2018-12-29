@@ -39,7 +39,7 @@ libnetcdf2_la_CPPFLAGS = ${AM_CPPFLAGS} -DDLL_EXPORT
 endif # BUILD_V2
 
 if ENABLE_S3
-libdispatch_la_SOURCES += ds3.c
+libdispatch_la_SOURCES += ds3raw.c
 endif # ENABLE_S3
 
 EXTRA_DIST=CMakeLists.txt ncsettings.hdr utf8proc_data.c

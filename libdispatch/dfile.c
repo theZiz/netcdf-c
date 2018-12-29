@@ -519,9 +519,9 @@ nc__create_mp(const char *path, int cmode, size_t initialsz,
  * determines the underlying file format automatically. Use the same
  * call to open a netCDF classic or netCDF-4 file.
  *
- * @param path File name for netCDF dataset to be opened. When DAP
- * support is enabled, then the path may be an OPeNDAP URL rather than
- * a file path.
+ * @param path File name for netCDF dataset to be opened. When the dataset
+ * is located on some remote server, then the path may be an OPeNDAP URL
+ * rather than a file path.
  * @param omode The open mode flag may include NC_WRITE (for read/write
  * access) and NC_SHARE (see below) and NC_DISKLESS (see below).
  * @param ncidp Pointer to location where returned netCDF ID is to be

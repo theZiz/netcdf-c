@@ -32,7 +32,7 @@ NC-4 Parallel Support:	@HAS_PARALLEL4@
 PnetCDF Support:	@HAS_PNETCDF@
 DAP2 Support:		@HAS_DAP@
 DAP4 Support:		@HAS_DAP4@
-S3 Support:		@HAS_S3@
+S3 Byte-Range Support:	@HAS_S3@
 Diskless Support:	@HAS_DISKLESS@
 MMap Support:		@HAS_MMAP@
 JNA Support:		@HAS_JNA@

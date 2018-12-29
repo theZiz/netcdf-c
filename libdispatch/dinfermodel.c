@@ -20,7 +20,7 @@
 #include "fbits.h"
 #include "ncbytes.h"
 #ifdef ENABLE_S3
-#include "ncs3.h"
+#include "ncs3raw.h"
 #endif
 
 #undef DEBUG
@@ -87,7 +87,7 @@ static struct LEGALMODES {
 {"dap2",NC_FORMAT_CLASSIC,NC_FORMATX_DAP2,NC_IOSP_DAP2,1},
 {"dap4",NC_FORMAT_NETCDF4,NC_FORMATX_DAP4,NC_IOSP_DAP4,1},
 /* IO Handler tags */
-{"s3",0,0,NC_IOSP_S3,1},
+{"s3raw",0,0,NC_IOSP_S3RAW,1},
 {"zarr",0,0,NC_IOSP_ZARR,1},
 /* Version tags */
 {"64bitoffset",0,0,0,NC_64BIT_OFFSET},
@@ -104,7 +104,7 @@ static struct IospRead {
 } readable[] = {
 {NC_IOSP_FILE,1},
 {NC_IOSP_MEMORY,1},
-{NC_IOSP_S3,1},
+{NC_IOSP_S3RAW,1},
 {NC_IOSP_ZARR,0},
 {0,0},
 };
@@ -773,11 +773,11 @@ openmagic(struct MagicFile* file)
 	} break;
 
 #ifdef ENABLE_S3
-    case NC_IOSP_S3: {
+    case NC_IOSP_S3RAW: {
 	/* Construct a URL minus any fragment */
         file->curlurl = ncuribuild(file->uri,NULL,NULL,NCURISVC);
 	/* Open the curl handle */
-	if((status=nc_s3_open(file->curlurl,&file->curl,&file->filelen))) goto done;
+	if((status=nc_s3raw_open(file->curlurl,&file->curl,&file->filelen))) goto done;
 	} break;
 #endif
 
@@ -831,11 +831,11 @@ readmagic(struct MagicFile* file, long pos, char* magic)
 	break;
 
 #ifdef ENABLE_S3
-    case NC_IOSP_S3: {
+    case NC_IOSP_S3RAW: {
 	NCbytes* buf = ncbytesnew();
 	fileoffset_t start = (size_t)pos;
 	fileoffset_t count = MAGIC_NUMBER_LEN;
-	status = nc_s3_read(file->curl,file->curlurl,start,count,buf);
+	status = nc_s3raw_read(file->curl,file->curlurl,start,count,buf);
 	if(status == NC_NOERR) {
 	    if(ncbyteslength(buf) != count)
 	        status = NC_EINVAL;
@@ -885,8 +885,8 @@ closemagic(struct MagicFile* file)
 	break;
 
 #ifdef ENABLE_S3
-     case NC_IOSP_S3:
-	status = nc_s3_close(file->curl);
+     case NC_IOSP_S3RAW:
+	status = nc_s3raw_close(file->curl);
 	nullfree(file->curlurl);
 	break;
 #endif
