@@ -18,7 +18,7 @@
 
 /* Programmer:  Dennis Heimbigner dmh@ucar.edu
  *
- * Purpose:  Access S3 files using byte range requests.
+ * Purpose:  Access remote datasets using byte range requests.
  * Derived from the HDF5 H5FDstdio.c file.
  *
  * NOTE:    This driver is not as well tested as the standard SEC2 driver
@@ -56,22 +56,22 @@
 #include "config.h"
 #include "netcdf.h"
 #include "ncbytes.h"
-#include "ncs3raw.h"
+#include "nchttp.h"
 
-#include "H5FDs3raw.h"
+#include "H5FDhttp.h"
 
 typedef off_t file_offset_t;
 
 /* The driver identification number, initialized at runtime */
-static hid_t H5FD_S3RAW_g = 0;
+static hid_t H5FD_HTTP_g = 0;
 
 /* File operations */
 typedef enum {
-    H5FD_S3_OP_UNKNOWN=0,
-    H5FD_S3_OP_READ=1,
-    H5FD_S3_OP_WRITE=2,
-    H5FD_S3_OP_SEEK=3
-} H5FD_s3_file_op;
+    H5FD_HTTP_OP_UNKNOWN=0,
+    H5FD_HTTP_OP_READ=1,
+    H5FD_HTTP_OP_WRITE=2,
+    H5FD_HTTP_OP_SEEK=3
+} H5FD_http_file_op;
 
 /* The description of a file belonging to this driver. The 'eoa' and 'eof'
  * determine the amount of hdf5 address space in use and the high-water mark
@@ -84,16 +84,16 @@ typedef enum {
  * to zero, 'pos' will be set to H5F_ADDR_UNDEF (as it is when an error
  * occurs), and 'op' will be set to H5F_OP_UNKNOWN.
  */
-typedef struct H5FD_s3raw_t {
+typedef struct H5FD_http_t {
     H5FD_t      pub;            /* public stuff, must be first      */
     haddr_t     eoa;            /* end of allocated region          */
     haddr_t     eof;            /* end of file; current file size   */
     haddr_t     pos;            /* current file I/O position        */
     unsigned    write_access;   /* Flag to indicate the file was opened with write access */
-    H5FD_s3_file_op op;		/* last operation */
+    H5FD_http_file_op op;		/* last operation */
     CURL*           curl;       /* Curl handle */
-    char*           s3url;      /* The URL (minus any fragment) for the S3 dataset */ 
-} H5FD_s3raw_t;
+    char*           url;        /* The URL (minus any fragment) for the dataset */ 
+} H5FD_http_t;
 
 
 /* These macros check for overflow of various quantities.  These macros
@@ -118,31 +118,31 @@ typedef struct H5FD_s3raw_t {
     HADDR_UNDEF==(A)+(Z) || (file_offset_t)((A)+(Z))<(file_offset_t)(A))
 
 /* Prototypes */
-static herr_t H5FD_s3raw_term(void);
-static H5FD_t *H5FD_s3raw_open(const char *name, unsigned flags,
+static herr_t H5FD_http_term(void);
+static H5FD_t *H5FD_http_open(const char *name, unsigned flags,
                  hid_t fapl_id, haddr_t maxaddr);
-static herr_t H5FD_s3raw_close(H5FD_t *lf);
-static int H5FD_s3raw_cmp(const H5FD_t *_f1, const H5FD_t *_f2);
-static herr_t H5FD_s3raw_query(const H5FD_t *_f1, unsigned long *flags);
-static haddr_t H5FD_s3raw_alloc(H5FD_t *_file, H5FD_mem_t type, hid_t dxpl_id, hsize_t size);
-static haddr_t H5FD_s3raw_get_eoa(const H5FD_t *_file, H5FD_mem_t type);
-static herr_t H5FD_s3raw_set_eoa(H5FD_t *_file, H5FD_mem_t type, haddr_t addr);
-static haddr_t H5FD_s3raw_get_eof(const H5FD_t *_file, H5FD_mem_t type);
-static herr_t  H5FD_s3raw_get_handle(H5FD_t *_file, hid_t fapl, void** file_handle);
-static herr_t H5FD_s3raw_read(H5FD_t *lf, H5FD_mem_t type, hid_t fapl_id, haddr_t addr,
+static herr_t H5FD_http_close(H5FD_t *lf);
+static int H5FD_http_cmp(const H5FD_t *_f1, const H5FD_t *_f2);
+static herr_t H5FD_http_query(const H5FD_t *_f1, unsigned long *flags);
+static haddr_t H5FD_http_alloc(H5FD_t *_file, H5FD_mem_t type, hid_t dxpl_id, hsize_t size);
+static haddr_t H5FD_http_get_eoa(const H5FD_t *_file, H5FD_mem_t type);
+static herr_t H5FD_http_set_eoa(H5FD_t *_file, H5FD_mem_t type, haddr_t addr);
+static haddr_t H5FD_http_get_eof(const H5FD_t *_file, H5FD_mem_t type);
+static herr_t  H5FD_http_get_handle(H5FD_t *_file, hid_t fapl, void** file_handle);
+static herr_t H5FD_http_read(H5FD_t *lf, H5FD_mem_t type, hid_t fapl_id, haddr_t addr,
                 size_t size, void *buf);
-static herr_t H5FD_s3raw_write(H5FD_t *lf, H5FD_mem_t type, hid_t fapl_id, haddr_t addr,
+static herr_t H5FD_http_write(H5FD_t *lf, H5FD_mem_t type, hid_t fapl_id, haddr_t addr,
                 size_t size, const void *buf);
-static herr_t H5FD_s3raw_flush(H5FD_t *_file, hid_t dxpl_id, hbool_t closing);
-static herr_t H5FD_s3raw_lock(H5FD_t *_file, hbool_t rw);
-static herr_t H5FD_s3raw_unlock(H5FD_t *_file);
+static herr_t H5FD_http_flush(H5FD_t *_file, hid_t dxpl_id, hbool_t closing);
+static herr_t H5FD_http_lock(H5FD_t *_file, hbool_t rw);
+static herr_t H5FD_http_unlock(H5FD_t *_file);
 
-/* Beware, not same as H5FD_S3RAW_g */
-static const H5FD_class_t H5FD_s3raw_g = {
-    "s3",                    /* name         */
+/* Beware, not same as H5FD_HTTP_g */
+static const H5FD_class_t H5FD_http_g = {
+    "http",                     /* name         */
     MAXADDR,                    /* maxaddr      */
     H5F_CLOSE_WEAK,             /* fc_degree    */
-    H5FD_s3raw_term,            /* terminate    */
+    H5FD_http_term,             /* terminate    */
     NULL,                       /* sb_size      */
     NULL,                       /* sb_encode    */
     NULL,                       /* sb_decode    */
@@ -153,34 +153,34 @@ static const H5FD_class_t H5FD_s3raw_g = {
     0,                          /* dxpl_size    */
     NULL,                       /* dxpl_copy    */
     NULL,                       /* dxpl_free    */
-    H5FD_s3raw_open,            /* open         */
-    H5FD_s3raw_close,           /* close        */
-    H5FD_s3raw_cmp,             /* cmp          */
-    H5FD_s3raw_query,           /* query        */
+    H5FD_http_open,            /* open         */
+    H5FD_http_close,           /* close        */
+    H5FD_http_cmp,             /* cmp          */
+    H5FD_http_query,           /* query        */
     NULL,                       /* get_type_map */
-    H5FD_s3raw_alloc,           /* alloc        */
+    H5FD_http_alloc,           /* alloc        */
     NULL,                       /* free         */
-    H5FD_s3raw_get_eoa,         /* get_eoa      */
-    H5FD_s3raw_set_eoa,         /* set_eoa      */
-    H5FD_s3raw_get_eof,         /* get_eof      */
-    H5FD_s3raw_get_handle,      /* get_handle   */
-    H5FD_s3raw_read,            /* read         */
-    H5FD_s3raw_write,           /* write        */
-    H5FD_s3raw_flush,           /* flush        */
+    H5FD_http_get_eoa,         /* get_eoa      */
+    H5FD_http_set_eoa,         /* set_eoa      */
+    H5FD_http_get_eof,         /* get_eof      */
+    H5FD_http_get_handle,      /* get_handle   */
+    H5FD_http_read,            /* read         */
+    H5FD_http_write,           /* write        */
+    H5FD_http_flush,           /* flush        */
     NULL,		     /* truncate     */
-    H5FD_s3raw_lock,            /* lock         */
-    H5FD_s3raw_unlock,          /* unlock       */
+    H5FD_http_lock,            /* lock         */
+    H5FD_http_unlock,          /* unlock       */
     H5FD_FLMAP_DICHOTOMY	/* fl_map       */
 };
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_init
+ * Function:  H5FD_http_init
  *
  * Purpose:  Initialize this driver by registering the driver with the
  *    library.
  *
- * Return:  Success:  The driver ID for the s3 driver.
+ * Return:  Success:  The driver ID for the driver.
  *
  *    Failure:  Negative.
  *
@@ -190,19 +190,19 @@ static const H5FD_class_t H5FD_s3raw_g = {
  *-------------------------------------------------------------------------
  */
 hid_t
-H5FD_s3raw_init(void)
+H5FD_http_init(void)
 {
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
 
-    if (H5I_VFL!=H5Iget_type(H5FD_S3RAW_g))
-        H5FD_S3RAW_g = H5FDregister(&H5FD_s3raw_g);
-    return H5FD_S3RAW_g;
-} /* end H5FD_s3raw_init() */
+    if (H5I_VFL!=H5Iget_type(H5FD_HTTP_g))
+        H5FD_HTTP_g = H5FDregister(&H5FD_http_g);
+    return H5FD_HTTP_g;
+} /* end H5FD_http_init() */
 
 
 /*---------------------------------------------------------------------------
- * Function:  H5FD_s3raw_term
+ * Function:  H5FD_http_term
  *
  * Purpose:  Shut down the VFD
  *
@@ -214,19 +214,19 @@ H5FD_s3raw_init(void)
  *---------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_term(void)
+H5FD_http_term(void)
 {
     /* Reset VFL ID */
-    H5FD_S3RAW_g = 0;
+    H5FD_HTTP_g = 0;
 
     return 0;
-} /* end H5FD_s3raw_term() */
+} /* end H5FD_http_term() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5Pset_fapl_s3raw
+ * Function:  H5Pset_fapl_http
  *
- * Purpose:  Modify the file access property list to use the H5FD_S3
+ * Purpose:  Modify the file access property list to use the H5FD_HTTP
  *    driver defined in this source file.  There are no driver
  *    specific properties.
  *
@@ -238,9 +238,9 @@ H5FD_s3raw_term(void)
  *-------------------------------------------------------------------------
  */
 herr_t
-H5Pset_fapl_s3raw(hid_t fapl_id)
+H5Pset_fapl_http(hid_t fapl_id)
 {
-    static const char *func = "H5FDset_fapl_s3raw";  /*for error reporting*/
+    static const char *func = "H5FDset_fapl_http";  /*for error reporting*/
 
     /*NO TRACE*/
 
@@ -250,14 +250,14 @@ H5Pset_fapl_s3raw(hid_t fapl_id)
     if(0 == H5Pisa_class(fapl_id, H5P_FILE_ACCESS))
         H5Epush_ret(func, H5E_ERR_CLS, H5E_PLIST, H5E_BADTYPE, "not a file access property list", -1)
 
-    return H5Pset_driver(fapl_id, H5FD_S3RAW, NULL);
-} /* end H5Pset_fapl_s3raw() */
+    return H5Pset_driver(fapl_id, H5FD_HTTP, NULL);
+} /* end H5Pset_fapl_http() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_open
+ * Function:  H5FD_http_open
  *
- * Purpose:  Opens a S3 Object as an HDF5 file.
+ * Purpose:  Opens a remote Object as an HDF5 file.
  *
  * Errors:
  *  IO  CANTOPENFILE    File doesn't exist and CREAT wasn't
@@ -275,14 +275,14 @@ H5Pset_fapl_s3raw(hid_t fapl_id)
  *-------------------------------------------------------------------------
  */
 static H5FD_t *
-H5FD_s3raw_open( const char *name, unsigned flags, hid_t /*UNUSED*/ fapl_id,
+H5FD_http_open( const char *name, unsigned flags, hid_t /*UNUSED*/ fapl_id,
     haddr_t maxaddr)
 {
     unsigned            write_access = 0;           /* File opened with write access? */
-    H5FD_s3raw_t        *file = NULL;
-    static const char   *func = "H5FD_s3raw_open";  /* Function Name for error reporting */
+    H5FD_http_t        *file = NULL;
+    static const char   *func = "H5FD_http_open";  /* Function Name for error reporting */
     CURL* curl = NULL;
-    long long s3len = -1;
+    long long len = -1;
     int ncstat = NC_NOERR;
 
     /* Sanity check on file offsets */
@@ -296,7 +296,7 @@ H5FD_s3raw_open( const char *name, unsigned flags, hid_t /*UNUSED*/ fapl_id,
 
     /* Check arguments */
     if (!name || !*name)
-        H5Epush_ret(func, H5E_ERR_CLS, H5E_ARGS, H5E_BADVALUE, "invalid S3 URL", NULL)
+        H5Epush_ret(func, H5E_ERR_CLS, H5E_ARGS, H5E_BADVALUE, "invalid URL", NULL)
     if (0 == maxaddr || HADDR_UNDEF == maxaddr)
         H5Epush_ret(func, H5E_ERR_CLS, H5E_ARGS, H5E_BADRANGE, "bogus maxaddr", NULL)
     if (ADDR_OVERFLOW(maxaddr))
@@ -306,35 +306,35 @@ H5FD_s3raw_open( const char *name, unsigned flags, hid_t /*UNUSED*/ fapl_id,
     write_access = 0;
 
     /* Open file in read-only mode, to check for existence  and get length */
-    if((ncstat = nc_s3raw_open(name,&curl,&s3len))) {
-        H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_CANTOPENFILE, "cannot access S3 object", NULL)
+    if((ncstat = nc_http_open(name,&curl,&len))) {
+        H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_CANTOPENFILE, "cannot access object", NULL)
     }
 
     /* Build the return value */
-    if(NULL == (file = (H5FD_s3raw_t *)H5allocate_memory(sizeof(H5FD_s3raw_t),0))) {
-	nc_s3raw_close(curl);
+    if(NULL == (file = (H5FD_http_t *)H5allocate_memory(sizeof(H5FD_http_t),0))) {
+	nc_http_close(curl);
         H5Epush_ret(func, H5E_ERR_CLS, H5E_RESOURCE, H5E_NOSPACE, "memory allocation failed", NULL)
     } /* end if */
-    memset(file,0,sizeof(H5FD_s3raw_t));
+    memset(file,0,sizeof(H5FD_http_t));
 
-    file->op = H5FD_S3_OP_SEEK;
+    file->op = H5FD_HTTP_OP_SEEK;
     file->pos = HADDR_UNDEF;
     file->write_access = write_access;    /* Note the write_access for later */
-    file->eof = (haddr_t)s3len;
+    file->eof = (haddr_t)len;
     file->curl = curl; curl = NULL;
-    file->s3url = H5allocate_memory(strlen(name+1),0);
-    if(file->s3url == NULL) {
-	nc_s3raw_close(curl);
+    file->url = H5allocate_memory(strlen(name+1),0);
+    if(file->url == NULL) {
+	nc_http_close(curl);
         H5Epush_ret(func, H5E_ERR_CLS, H5E_RESOURCE, H5E_NOSPACE, "memory allocation failed", NULL)
     }
-    memcpy(file->s3url,name,strlen(name)+1);
+    memcpy(file->url,name,strlen(name)+1);
 
     return((H5FD_t*)file);
-} /* end H5FD_S3_OPen() */
+} /* end H5FD_HTTP_OPen() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5F_s3_close
+ * Function:  H5F_http_close
  *
  * Purpose:  Closes a file.
  *
@@ -348,28 +348,28 @@ H5FD_s3raw_open( const char *name, unsigned flags, hid_t /*UNUSED*/ fapl_id,
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_close(H5FD_t *_file)
+H5FD_http_close(H5FD_t *_file)
 {
-    H5FD_s3raw_t  *file = (H5FD_s3raw_t*)_file;
+    H5FD_http_t  *file = (H5FD_http_t*)_file;
 #if 0
-    static const char *func = "H5FD_s3raw_close";  /* Function Name for error reporting */
+    static const char *func = "H5FD_http_close";  /* Function Name for error reporting */
 #endif
 
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
 
     /* Close the underlying curl handle*/
-    if(file->curl) nc_s3raw_close(file->curl);
-    if(file->s3url) H5free_memory(file->s3url);
+    if(file->curl) nc_http_close(file->curl);
+    if(file->url) H5free_memory(file->url);
 
     H5free_memory(file);
 
     return 0;
-} /* end H5FD_s3raw_close() */
+} /* end H5FD_http_close() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_cmp
+ * Function:  H5FD_http_cmp
  *
  * Purpose:  Compares two files belonging to this driver using an
  *    arbitrary (but consistent) ordering.
@@ -385,22 +385,22 @@ H5FD_s3raw_close(H5FD_t *_file)
  *-------------------------------------------------------------------------
  */
 static int
-H5FD_s3raw_cmp(const H5FD_t *_f1, const H5FD_t *_f2)
+H5FD_http_cmp(const H5FD_t *_f1, const H5FD_t *_f2)
 {
-    const H5FD_s3raw_t  *f1 = (const H5FD_s3raw_t*)_f1;
-    const H5FD_s3raw_t  *f2 = (const H5FD_s3raw_t*)_f2;
+    const H5FD_http_t  *f1 = (const H5FD_http_t*)_f1;
+    const H5FD_http_t  *f2 = (const H5FD_http_t*)_f2;
 
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
 
-    if(strcmp(f1->s3url,f2->s3url) < 0) return -1;
-    if(strcmp(f1->s3url,f2->s3url) > 0) return 1;
+    if(strcmp(f1->url,f2->url) < 0) return -1;
+    if(strcmp(f1->url,f2->url) > 0) return 1;
     return 0;
-} /* H5FD_s3raw_cmp() */
+} /* H5FD_http_cmp() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_query
+ * Function:  H5FD_http_query
  *
  * Purpose:  Set the flags that this VFL driver is capable of supporting.
  *              (listed in H5FDpublic.h)
@@ -415,7 +415,7 @@ H5FD_s3raw_cmp(const H5FD_t *_f1, const H5FD_t *_f2)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_query(const H5FD_t *_f, unsigned long /*OUT*/ *flags)
+H5FD_http_query(const H5FD_t *_f, unsigned long /*OUT*/ *flags)
 {
     /* Quiet the compiler */
     _f=_f;
@@ -435,11 +435,11 @@ H5FD_s3raw_query(const H5FD_t *_f, unsigned long /*OUT*/ *flags)
     }
 
     return 0;
-} /* end H5FD_s3raw_query() */
+} /* end H5FD_http_query() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_alloc
+ * Function:  H5FD_http_alloc
  *
  * Purpose:     Allocates file memory. If fseeko isn't available, makes
  *              sure the file size isn't bigger than 2GB because the
@@ -457,9 +457,9 @@ H5FD_s3raw_query(const H5FD_t *_f, unsigned long /*OUT*/ *flags)
  *-------------------------------------------------------------------------
  */
 static haddr_t
-H5FD_s3raw_alloc(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl_id, hsize_t size)
+H5FD_http_alloc(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl_id, hsize_t size)
 {
-    H5FD_s3raw_t    *file = (H5FD_s3raw_t*)_file;
+    H5FD_http_t    *file = (H5FD_http_t*)_file;
     haddr_t         addr;
 
     /* Quiet compiler */
@@ -475,11 +475,11 @@ H5FD_s3raw_alloc(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxp
     file->eoa = addr + size;
 
     return addr;
-} /* end H5FD_s3raw_alloc() */
+} /* end H5FD_http_alloc() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_get_eoa
+ * Function:  H5FD_http_get_eoa
  *
  * Purpose:  Gets the end-of-address marker for the file. The EOA marker
  *           is the first address past the last byte allocated in the
@@ -495,9 +495,9 @@ H5FD_s3raw_alloc(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxp
  *-------------------------------------------------------------------------
  */
 static haddr_t
-H5FD_s3raw_get_eoa(const H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type)
+H5FD_http_get_eoa(const H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type)
 {
-    const H5FD_s3raw_t *file = (const H5FD_s3raw_t *)_file;
+    const H5FD_http_t *file = (const H5FD_http_t *)_file;
 
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
@@ -506,11 +506,11 @@ H5FD_s3raw_get_eoa(const H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type)
     type = type;
 
     return file->eoa;
-} /* end H5FD_s3raw_get_eoa() */
+} /* end H5FD_http_get_eoa() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_set_eoa
+ * Function:  H5FD_http_set_eoa
  *
  * Purpose:  Set the end-of-address marker for the file. This function is
  *    called shortly after an existing HDF5 file is opened in order
@@ -526,9 +526,9 @@ H5FD_s3raw_get_eoa(const H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_set_eoa(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, haddr_t addr)
+H5FD_http_set_eoa(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, haddr_t addr)
 {
-    H5FD_s3raw_t  *file = (H5FD_s3raw_t*)_file;
+    H5FD_http_t  *file = (H5FD_http_t*)_file;
 
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
@@ -543,7 +543,7 @@ H5FD_s3raw_set_eoa(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, haddr_t addr)
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_get_eof
+ * Function:  H5FD_http_get_eof
  *
  * Purpose:  Returns the end-of-file marker, which is the greater of
  *    either the Unix end-of-file or the HDF5 end-of-address
@@ -561,9 +561,9 @@ H5FD_s3raw_set_eoa(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, haddr_t addr)
  *-------------------------------------------------------------------------
  */
 static haddr_t
-H5FD_s3raw_get_eof(const H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type)
+H5FD_http_get_eof(const H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type)
 {
-    const H5FD_s3raw_t  *file = (const H5FD_s3raw_t *)_file;
+    const H5FD_http_t  *file = (const H5FD_http_t *)_file;
 
     /* Quiet the compiler */
     type = type;
@@ -575,13 +575,13 @@ H5FD_s3raw_get_eof(const H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type)
     type = type;
 
     return(file->eof);
-} /* end H5FD_s3raw_get_eof() */
+} /* end H5FD_http_get_eof() */
 
 
 /*-------------------------------------------------------------------------
- * Function:       H5FD_s3raw_get_handle
+ * Function:       H5FD_http_get_handle
  *
- * Purpose:        Returns the file handle of s3 file driver.
+ * Purpose:        Returns the file handle of file driver.
  *
  * Returns:        Non-negative if succeed or negative if fails.
  *
@@ -591,10 +591,10 @@ H5FD_s3raw_get_eof(const H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_get_handle(H5FD_t *_file, hid_t /*UNUSED*/ fapl, void **file_handle)
+H5FD_http_get_handle(H5FD_t *_file, hid_t /*UNUSED*/ fapl, void **file_handle)
 {
-    H5FD_s3raw_t       *file = (H5FD_s3raw_t *)_file;
-    static const char  *func = "H5FD_s3raw_get_handle";  /* Function Name for error reporting */
+    H5FD_http_t       *file = (H5FD_http_t *)_file;
+    static const char  *func = "H5FD_http_get_handle";  /* Function Name for error reporting */
 
     /* Quiet the compiler */
     fapl = fapl;
@@ -607,11 +607,11 @@ H5FD_s3raw_get_handle(H5FD_t *_file, hid_t /*UNUSED*/ fapl, void **file_handle)
         H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_WRITEERROR, "get handle failed", -1)
 
     return 0;
-} /* end H5FD_s3raw_get_handle() */
+} /* end H5FD_http_get_handle() */
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_read
+ * Function:  H5FD_http_read
  *
  * Purpose:  Reads SIZE bytes beginning at address ADDR in file LF and
  *    places them in buffer BUF.  Reading past the logical or
@@ -629,11 +629,11 @@ H5FD_s3raw_get_handle(H5FD_t *_file, hid_t /*UNUSED*/ fapl, void **file_handle)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_read(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl_id,
+H5FD_http_read(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl_id,
     haddr_t addr, size_t size, void /*OUT*/ *buf)
 {
-    H5FD_s3raw_t    *file = (H5FD_s3raw_t*)_file;
-    static const char *func = "H5FD_s3raw_read";  /* Function Name for error reporting */
+    H5FD_http_t    *file = (H5FD_http_t*)_file;
+    static const char *func = "H5FD_http_read";  /* Function Name for error reporting */
     int ncstat = NC_NOERR;
 
     /* Quiet the compiler */
@@ -658,11 +658,11 @@ H5FD_s3raw_read(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl
     }
 
     /* Seek to the correct file position. */
-    if (!(file->op == H5FD_S3_OP_READ || file->op == H5FD_S3_OP_SEEK) ||
+    if (!(file->op == H5FD_HTTP_OP_READ || file->op == H5FD_HTTP_OP_SEEK) ||
             file->pos != addr) {
 #if 0
         if (file_fseek(file->fp, (file_offset_t)addr, SEEK_SET) < 0) {
-            file->op = H5FD_S3_OP_UNKNOWN;
+            file->op = H5FD_HTTP_OP_UNKNOWN;
             file->pos = HADDR_UNDEF;
             H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_SEEKERROR, "fseek failed", -1)
         }
@@ -677,64 +677,28 @@ H5FD_s3raw_read(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl
         size -= nbytes;
     }
 
-#if 0
-    /* Read the data.  Since we're reading single-byte values, a partial read
-     * will advance the file position by N.  If N is zero or an error
-     * occurs then the file position is undefined.
-     */
-    while(size > 0) {
-
-        size_t bytes_in        = 0;    /* # of bytes to read       */
-        size_t bytes_read      = 0;    /* # of bytes actually read */
-        size_t item_size       = 1;    /* size of items in bytes */
-
-        if(size > H5_S3_MAX_IO_BYTES_g)
-            bytes_in = H5_S3_MAX_IO_BYTES_g;
-        else
-            bytes_in = size;
-
-        bytes_read = fread(buf, item_size, bytes_in, file->fp);
-
-        if(0 == bytes_read && ferror(file->fp)) { /* error */
-            file->op = H5FD_S3_OP_UNKNOWN;
-            file->pos = HADDR_UNDEF;
-            H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_READERROR, "fread failed", -1)
-        } /* end if */
-        
-        if(0 == bytes_read && feof(file->fp)) {
-            /* end of file but not end of format address space */
-            memset((unsigned char *)buf, 0, size);
-            break;
-        } /* end if */
-        
-        size -= bytes_read;
-        addr += (haddr_t)bytes_read;
-        buf = (char *)buf + bytes_read;
-    } /* end while */
-#else
     {
 	NCbytes* bbuf = ncbytesnew();
-        if((ncstat = nc_s3raw_read(file->curl,file->s3url,addr,size,bbuf))) {
-            file->op = H5FD_S3_OP_UNKNOWN;
+        if((ncstat = nc_http_read(file->curl,file->url,addr,size,bbuf))) {
+            file->op = H5FD_HTTP_OP_UNKNOWN;
             file->pos = HADDR_UNDEF;
 	    ncbytesfree(bbuf); bbuf = NULL;
-            H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_READERROR, "S3 read failed", -1)
+            H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_READERROR, "HTTP byte-range read failed", -1)
         } /* end if */
 
 	/* Check that proper number of bytes was read */
 	if(ncbyteslength(bbuf) != size) {
 	    ncbytesfree(bbuf); bbuf = NULL;
-            H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_READERROR, "S3 read mismatch ", -1)
+            H5Epush_ret(func, H5E_ERR_CLS, H5E_IO, H5E_READERROR, "HTTP byte-range read mismatch ", -1)
 	}	
 
 	/* Extract the data from buf */
 	memcpy(buf,ncbytescontents(bbuf),size);	        
 	ncbytesfree(bbuf);
     }
-#endif
 
     /* Update the file position data. */
-    file->op = H5FD_S3_OP_READ;
+    file->op = H5FD_HTTP_OP_READ;
     file->pos = addr;
 
     return 0;
@@ -742,7 +706,7 @@ H5FD_s3raw_read(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_write
+ * Function:  H5FD_http_write
  *
  * Purpose:  Writes SIZE bytes from the beginning of BUF into file LF at
  *    file address ADDR.
@@ -758,10 +722,10 @@ H5FD_s3raw_read(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_write(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl_id,
+H5FD_http_write(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxpl_id,
     haddr_t addr, size_t size, const void *buf)
 {
-    static const char *func = "H5FD_s3raw_write";  /* Function Name for error reporting */
+    static const char *func = "H5FD_http_write";  /* Function Name for error reporting */
 
     /* Quiet the compiler */
     dxpl_id = dxpl_id;
@@ -778,7 +742,7 @@ H5FD_s3raw_write(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxp
 
 
 /*-------------------------------------------------------------------------
- * Function:  H5FD_s3raw_flush
+ * Function:  H5FD_http_flush
  *
  * Purpose:  Makes sure that all data is on disk.
  *
@@ -794,11 +758,11 @@ H5FD_s3raw_write(H5FD_t *_file, H5FD_mem_t /*UNUSED*/ type, hid_t /*UNUSED*/ dxp
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_flush(H5FD_t *_file, hid_t /*UNUSED*/ dxpl_id, hbool_t closing)
+H5FD_http_flush(H5FD_t *_file, hid_t /*UNUSED*/ dxpl_id, hbool_t closing)
 {
 #if 0
-    H5FD_s3raw_t  *file = (H5FD_s3raw_t*)_file;
-    static const char *func = "H5FD_s3raw_flush";  /* Function Name for error reporting */
+    H5FD_http_t  *file = (H5FD_http_t*)_file;
+    static const char *func = "H5FD_http_flush";  /* Function Name for error reporting */
 #endif
 
     /* Quiet the compiler */
@@ -817,17 +781,17 @@ H5FD_s3raw_flush(H5FD_t *_file, hid_t /*UNUSED*/ dxpl_id, hbool_t closing)
 
             /* Reset last file I/O information */
             file->pos = HADDR_UNDEF;
-            file->op = H5FD_S3_OP_UNKNOWN;
+            file->op = H5FD_HTTP_OP_UNKNOWN;
         } /* end if */
     } /* end if */
 #endif
 
     return 0;
-} /* end H5FD_s3raw_flush() */
+} /* end H5FD_http_flush() */
 
 
 /*-------------------------------------------------------------------------
- * Function:    H5FD_s3raw_lock
+ * Function:    H5FD_http_lock
  *
  * Purpose:     Lock a file via flock
  *              NOTE: This function is a no-op if flock() is not present.
@@ -842,16 +806,16 @@ H5FD_s3raw_flush(H5FD_t *_file, hid_t /*UNUSED*/ dxpl_id, hbool_t closing)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_lock(H5FD_t *_file, hbool_t rw)
+H5FD_http_lock(H5FD_t *_file, hbool_t rw)
 {
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
 
     return 0;
-} /* end H5FD_s3raw_lock() */
+} /* end H5FD_http_lock() */
 
 /*-------------------------------------------------------------------------
- * Function:    H5F_s3_unlock
+ * Function:    H5F_http_unlock
  *
  * Purpose:     Unlock a file via flock
  *              NOTE: This function is a no-op if flock() is not present.
@@ -866,13 +830,13 @@ H5FD_s3raw_lock(H5FD_t *_file, hbool_t rw)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_s3raw_unlock(H5FD_t *_file)
+H5FD_http_unlock(H5FD_t *_file)
 {
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
 
     return 0;
-} /* end H5FD_s3raw_unlock() */
+} /* end H5FD_http_unlock() */
 
 
 #ifdef _H5private_H

@@ -14,8 +14,8 @@
 #include "ncrc.h"
 #include "ncmodel.h"
 
-#ifdef ENABLE_S3
-#include "H5FDs3raw.h"
+#ifdef ENABLE_HTTP
+#include "H5FDhttp.h"
 #endif
 
 #define NUM_TYPES 12 /**< Number of netCDF atomic types. */
@@ -423,16 +423,16 @@ nc4_open_file(const char *path, int mode, void* parameters, NC *nc)
 
    h5 = (NC_HDF5_FILE_INFO_T*)nc4_info->format_file_info;
 
-#ifdef ENABLE_S3
-   /* See if we want the Simple S3 protocol */
-   if(nc->model->iosp == NC_IOSP_S3RAW) {
-	h5->s3raw.iosp = 1;
+#ifdef ENABLE_HTTP
+   /* See if we want the byte range protocol */
+   if(nc->model->iosp == NC_IOSP_HTTP) {
+	h5->http.iosp = 1;
         /* Kill off any conflicting modes flags */
         mode &= ~(NC_WRITE|NC_DISKLESS|NC_PERSIST|NC_INMEMORY);
 	parameters = NULL; /* kill off parallel */	    
    } else
-	h5->s3raw.iosp = 0;
-#endif /*ENABLE_S3*/
+	h5->http.iosp = 0;
+#endif /*ENABLE_HTTP*/
 
    nc4_info->mem.inmemory = ((mode & NC_INMEMORY) == NC_INMEMORY);
    nc4_info->mem.diskless = ((mode & NC_DISKLESS) == NC_DISKLESS);
@@ -532,11 +532,11 @@ nc4_open_file(const char *path, int mode, void* parameters, NC *nc)
       if ((h5->hdfid = H5Fopen(path, flags, fapl_id)) < 0)
          BAIL(NC_EHDFERR);
    }
-#ifdef ENABLE_S3
+#ifdef ENABLE_HTTP
    else
-   if(h5->s3raw.iosp) {   /* Arrange to use the S3 file driver */
-      /* Configure FAPL to use the S3 file driver */
-      if (H5Pset_fapl_s3raw(fapl_id) < 0)
+   if(h5->http.iosp) {   /* Arrange to use the byte-range driver */
+      /* Configure FAPL to use the byte-range file driver */
+      if (H5Pset_fapl_http(fapl_id) < 0)
 	BAIL(NC_EHDFERR);
       /* Open the HDF5 file. */
       if ((h5->hdfid = H5Fopen(path, flags, fapl_id)) < 0)

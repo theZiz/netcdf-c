@@ -28,9 +28,9 @@ ELSE (USE_FFIO)
   SET(libsrc_SOURCES ${libsrc_SOURCES} posixio.c)
 ENDIF (USE_FFIO)
 
-IF (ENABLE_S3)
-  SET(libsrc_SOURCES ${libsrc_SOURCES} s3rawio.c)
-ENDIF( BUILD_MMAP)
+IF (ENABLE_HTTP)
+  SET(libsrc_SOURCES ${libsrc_SOURCES} httpio.c)
+ENDIF(ENABLE_HTTP)
 
 add_library(netcdf3 OBJECT ${libsrc_SOURCES})
 

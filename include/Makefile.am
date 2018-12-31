@@ -24,8 +24,8 @@ if USE_DAP
 noinst_HEADERS += ncdap.h
 endif
 
-if ENABLE_S3
-noinst_HEADERS += ncs3raw.h
+if ENABLE_HTTP
+noinst_HEADERS += nchttp.h
 endif
 
 EXTRA_DIST = CMakeLists.txt XGetopt.h netcdf_meta.h.in

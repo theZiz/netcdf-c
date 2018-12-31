@@ -11,13 +11,15 @@
 
 /* Define the io handler to be used to do lowest level
    access. This is above the libcurl level and below the
-   dispatcher level
+   dispatcher level. This is only used for remote
+   datasets or for implementations where the implementation
+   multiplexes more than one IOSP in a single dispatcher.
 */
 #define NC_IOSP_FILE	(1)
 #define NC_IOSP_MEMORY	(2)
 #define NC_IOSP_DAP2	(3)
 #define NC_IOSP_DAP4	(4)
-#define NC_IOSP_S3RAW	(5)
+#define NC_IOSP_HTTP	(5)
 #define NC_IOSP_ZARR	(6)
 
 /* Track the information hat will help us
@@ -28,32 +30,19 @@ typedef struct NCmodel {
     int format; /* NC_FORMAT_XXX value */
     int impl; /* NC_FORMATX_XXX value */
     int iosp; /* NC_IOSP_XXX value (above) */
-    int version; /* of the format */
 } NCmodel;
-
-/* Define a mask of all possible format flags */
-#define ANYFORMAT (NC_64BIT_OFFSET|NC_64BIT_DATA|NC_CLASSIC_MODEL|NC_NETCDF4|NC_UDF0|NC_UDF1)
 
 /* Keep compiler quiet */
 struct NCURI;
 struct NC_dispatch;
 
 #if 0
-/* return 1 if path looks like a url; 0 otherwise */
-EXTERNL int NC_testurl(const char* path);
-#endif
-
 /* return first IOSP or NULL if none */
 EXTERNL int NC_urliosp(struct NCURI* u);
+#endif
 
 /* Infer model format and implementation */
 EXTERNL int NC_infermodel(const char* path, int* omodep, int iscreate, int useparallel, void* params, NCmodel* model, char** newpathp);
-
-/*
-Infer as much as possible from path plus the omode
-May rewrite path.
-*/
-EXTERNL int NC_pathinfer(const char* path, int omode, NCmodel* model, char** newpathp, struct NCURI** urip);
 
 /**
  * Provide a hidden interface to allow utilities

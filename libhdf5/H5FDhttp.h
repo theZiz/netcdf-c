@@ -25,22 +25,22 @@
  * Derived from the HDF5 Source file H5FDstdio.c
  */
 
-#ifndef H5FDS3RAW_H
-#define H5FDS3RAW_H
+#ifndef H5FDHTTP_H
+#define H5FDHTTP_H
 
 #include "H5Ipublic.h"
 
-#define H5FD_S3RAW	(H5FD_s3raw_init())
+#define H5FD_HTTP	(H5FD_http_init())
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-H5_DLL hid_t H5FD_s3raw_init(void);
-H5_DLL herr_t H5Pset_fapl_s3raw(hid_t fapl_id);
+H5_DLL hid_t H5FD_http_init(void);
+H5_DLL herr_t H5Pset_fapl_http(hid_t fapl_id);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*H5FDS3RAW_H*/
+#endif /*H5FDHTTP_H*/

@@ -186,6 +186,9 @@ Use this in mode flags for both nc_create() and nc_open(). */
 /* Alias */
 #define NC_FORMAT_CDF5    NC_FORMAT_64BIT_DATA
 
+/* Define a mask covering format flags only */
+#define NC_FORMAT_ALL (NC_64BIT_OFFSET|NC_64BIT_DATA|NC_CLASSIC_MODEL|NC_NETCDF4|NC_UDF0|NC_UDF1)
+
 /**@}*/
 
 /** Extended format specifier returned by  nc_inq_format_extended()

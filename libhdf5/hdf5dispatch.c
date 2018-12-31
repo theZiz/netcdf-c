@@ -11,8 +11,8 @@
 #include "config.h"
 #include "hdf5internal.h"
 
-#ifdef ENABLE_S3
-#include "H5FDs3raw.h"
+#ifdef ENABLE_HTTP
+#include "H5FDhttp.h"
 #endif
 
 static NC_Dispatch NC4_dispatcher = {
@@ -122,8 +122,8 @@ NC_HDF5_initialize(void)
    HDF5_dispatch_table = &NC4_dispatcher;
    if (!nc4_hdf5_initialized)
       nc4_hdf5_initialize();
-#ifdef ENABLE_S3
-   (void)H5FD_s3raw_init();
+#ifdef ENABLE_HTTP
+   (void)H5FD_http_init();
 #endif  
    return NC4_provenance_init();
 }

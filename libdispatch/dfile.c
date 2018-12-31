@@ -2060,9 +2060,7 @@ NC_open(const char *path0, int omode, int basepe, size_t *chunksizehintp,
   	    {stat = NC_ENOTBUILT; goto done;}
 	if(!hdf4built && model.impl == NC_FORMATX_NC_HDF4)
   	    {stat = NC_ENOTBUILT; goto done;}
-	if(!cdf5built && model.impl == NC_FORMATX_NC3 && model.version == 5)
-  	    {stat = NC_ENOTBUILT; goto done;}
-	if(!cdf5built && model.impl == NC_FORMATX_NC3 && model.version == 5)
+	if(!cdf5built && model.impl == NC_FORMATX_NC3 && model.format == NC_FORMAT_CDF5)
   	    {stat = NC_ENOTBUILT; goto done;}
 	if(!udf0built && model.impl == NC_FORMATX_UDF0)
   	    {stat = NC_ENOTBUILT; goto done;}

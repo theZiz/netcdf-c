@@ -29,9 +29,9 @@ libnetcdf3_la_SOURCES += posixio.c
 endif !USE_STDIO
 endif !USE_FFIO
 
-if ENABLE_S3
-  libnetcdf3_la_SOURCES += s3rawio.c
-endif ENABLE_S3
+if ENABLE_HTTP
+  libnetcdf3_la_SOURCES += httpio.c
+endif ENABLE_HTTP
 
 noinst_LTLIBRARIES = libnetcdf3.la
 

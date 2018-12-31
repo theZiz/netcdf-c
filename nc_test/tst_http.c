@@ -33,9 +33,9 @@ struct TESTURLS {
     int format; /* instance of NC_FORMATX_XXX */
     const char* url;
 } testurls[] = {
-{NC_FORMAT_64BIT_OFFSET, "https://s3-us-west-1.amazonaws.com/test-sample-netcdf/input.nc#mode=s3raw"},
+{NC_FORMAT_CLASSIC,"http://149.165.169.123:8080/thredds/fileServer/testdata/2004050300_eta_211.nc#bytes"},
 #ifdef USE_NETCDF4
-{NC_FORMAT_NETCDF4,"http://noaa-goes16.s3.amazonaws.com/ABI-L1b-RadC/2017/059/03/OR_ABI-L1b-RadC-M3C13_G16_s20170590337505_e20170590340289_c20170590340316.nc#mode=s3raw"},
+{NC_FORMAT_NETCDF4,"http://noaa-goes16.s3.amazonaws.com/ABI-L1b-RadC/2017/059/03/OR_ABI-L1b-RadC-M3C13_G16_s20170590337505_e20170590340289_c20170590340316.nc#mode=bytes"},
 #endif
 {0,NULL}
 };

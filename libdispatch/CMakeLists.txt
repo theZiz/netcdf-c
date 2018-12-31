@@ -14,9 +14,9 @@ IF(BUILD_V2)
   SET(libdispatch_SOURCES ${libdispatch_SOURCES} dv2i.c)
 ENDIF(BUILD_V2)
 
-IF(ENABLE_S3)
-  SET(libdispatch_SOURCES ${libdispatch_SOURCES} ds3raw.c)
-ENDIF(ENABLE_S3)
+IF(ENABLE_HTTP)
+  SET(libdispatch_SOURCES ${libdispatch_SOURCES} dhttp.c)
+ENDIF(ENABLE_HTTP)
 
 add_library(dispatch OBJECT ${libdispatch_SOURCES})
 

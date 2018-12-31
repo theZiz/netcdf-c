@@ -35,8 +35,8 @@ extern int ffio_open(const char*,int,off_t,size_t,size_t*,void*,ncio**,void** co
      extern int mmapio_open(const char*,int,off_t,size_t,size_t*,void*,ncio**,void** const);
 #  endif
 
-#ifdef ENABLE_S3
-    extern int s3rawio_open(const char*,int,off_t,size_t,size_t*,void*,ncio**,void** const);
+#ifdef ENABLE_HTTP
+    extern int httpio_open(const char*,int,off_t,size_t,size_t*,void*,ncio**,void** const);
 #endif
 
      extern int memio_create(const char*,int,size_t,off_t,size_t,size_t*,void*,ncio**,void** const);
@@ -88,12 +88,12 @@ ncio_open(const char *path, int ioflags,
         return mmapio_open(path,ioflags,igeto,igetsz,sizehintp,parameters,iopp,mempp);
     }
 #  endif /*USE_MMAP*/
-#  ifdef ENABLE_S3
-   /* The NC_S3 flag is a big hack until we can reorganize the ncio interface */
-   if(fIsSet(ioflags,NC_S3)) {
-        return s3rawio_open(path,ioflags,igeto,igetsz,sizehintp,parameters,iopp,mempp);
+#  ifdef ENABLE_HTTP
+   /* The NC_HTTP flag is a big hack until we can reorganize the ncio interface */
+   if(fIsSet(ioflags,NC_HTTP)) {
+        return httpio_open(path,ioflags,igeto,igetsz,sizehintp,parameters,iopp,mempp);
    }
-#  endif /*ENABLE_S3*/
+#  endif /*ENABLE_HTTP*/
 
 #ifdef USE_STDIO
     return stdio_open(path,ioflags,igeto,igetsz,sizehintp,parameters,iopp,mempp);

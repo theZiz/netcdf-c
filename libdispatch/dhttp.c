@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * Read a range of data from an S3 object
+ * Read a range of data from a remote dataset.
  *
  * Copyright 2018 University Corporation for Atmospheric
  * Research/Unidata. See COPYRIGHT file for more info.
@@ -22,7 +22,7 @@
 #include "nclog.h"
 #include "ncbytes.h"
 #include "nclist.h"
-#include "ncs3raw.h"
+#include "nchttp.h"
 
 #undef TRACE
 
@@ -40,7 +40,7 @@ static void headersoff(CURL* curl);
 
 #ifdef TRACE
 static void
-s3flush() {
+dbgflush() {
 fflush(stderr);
 fflush(stdout);
 }
@@ -49,10 +49,10 @@ static void
 Trace(const char* fcn)
 {
     fprintf(stdout,"xxx: %s\n",fcn);
-    s3flush();
+    dbgflush();
 }
 #else
-#define s3flush()
+#define dbgflush()
 #define Trace(fcn)
 #endif /*TRACE*/
 
@@ -65,7 +65,7 @@ Trace(const char* fcn)
 */
 
 int
-nc_s3raw_open(const char* objecturl, void** curlp, long long* filelenp)
+nc_http_open(const char* objecturl, void** curlp, long long* filelenp)
 {
     int stat = NC_NOERR;
     CURL* curl = NULL;
@@ -93,16 +93,22 @@ nc_s3raw_open(const char* objecturl, void** curlp, long long* filelenp)
 		sscanf(s,"%lld",filelenp);
 		break;
 	    }
+	    /* Also check for the Accept-Ranges header */ 
+	    if(strcasecmp(s,"accept-ranges")==0) {
+	        s = nclistget(list,i+1);
+		if(strcasecmp(s,"bytes")!=0) /* oops! */
+		    {stat = NC_EACCESS; goto done;}
+	    }
 	}
     }  
 done:
     nclistfreeall(list);
-s3flush();
+dbgflush();
     return stat;
 }
 
 int
-nc_s3raw_close(void* curl0)
+nc_http_close(void* curl0)
 {
     int stat = NC_NOERR;
     CURL* curl = curl0;
@@ -111,7 +117,7 @@ nc_s3raw_close(void* curl0)
 
     if(curl != NULL)
 	(void)curl_easy_cleanup(curl);
-s3flush();
+dbgflush();
     return stat;
 }
 
@@ -124,7 +130,7 @@ Assume URL etc has already been set.
 */
 
 int
-nc_s3raw_read(CURL* curl, const char* objecturl, fileoffset_t start, fileoffset_t count, NCbytes* buf)
+nc_http_read(CURL* curl, const char* objecturl, fileoffset_t start, fileoffset_t count, NCbytes* buf)
 {
     int stat = NC_NOERR;
     char range[64];
@@ -149,7 +155,7 @@ nc_s3raw_read(CURL* curl, const char* objecturl, fileoffset_t start, fileoffset_
 	goto done;
 
 done:
-s3flush();
+dbgflush();
     return stat;
 
 fail:
@@ -168,6 +174,35 @@ WriteMemoryCallback(void *ptr, size_t size, size_t nmemb, void *data)
         nclog(NCLOGWARN,"WriteMemoryCallback: zero sized chunk");
     ncbytesappendn(buf, ptr, realsize);
     return realsize;
+}
+
+static void
+trim(char* s)
+{
+    size_t l = strlen(s);
+    char* p = s;
+    char* q = s + l;
+    if(l == 0) return;
+    q--; /* point to last char of string */
+    /* Walk backward to first non-whitespace */
+    for(;q > p;q--) {
+	if(*q > ' ') break; /* found last non-whitespace */
+    }
+    /* invariant: p == q || *q > ' ' */
+    if(p == q) /* string is all whitespace */
+	{*p = '\0';}
+    else {/* *q is last non-whitespace */
+	q++; /* point to actual whitespace */
+	*q = '\0';
+    }
+    /* Ok, skip past leading whitespace */
+    for(p=s;*p;p++) {if(*p > ' ') break;}
+    /* invariant: *p == '\0' || *p > ' ' */
+    if(*p == 0) return; /* no leading whitespace */
+    /* Ok, overwrite any leading whitespace */
+    for(q=s;*p;) {*q++ = *p++;}
+    *q = '\0';
+    return;
 }
 
 static size_t
@@ -200,6 +235,7 @@ HeaderCallback(char *buffer, size_t size, size_t nitems, void *data)
 	p++; /* skip colon */
         memcpy(value,p,vlen);
         value[vlen] = '\0';
+        trim(value);
     }
     nclistpush(list,name);
     name = NULL;

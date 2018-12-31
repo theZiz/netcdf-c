@@ -523,9 +523,10 @@ _NC_infermodel()_. It is given the following parameters:
    or version).
 7. newpathp -- (OUT) sometimes, it is necessary to rewrite the path.
 
-\subsubsection model_infer_url Interpreting a URL path
-If the path looks like a URL, then additional information
-can be extracted from it to be used to specify the format, version, or iosp
-part of the model.
+As a rule, these values are used in the this order to infer the model.
+1. file contents -- highest precedence
+2. url (if it is one) -- using the protocol and fragment arguments
+3. mode flags
+4. default format -- lowest precedence
  
 */
