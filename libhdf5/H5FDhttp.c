@@ -189,7 +189,7 @@ static const H5FD_class_t H5FD_http_g = {
  *
  *-------------------------------------------------------------------------
  */
-hid_t
+EXTERNL hid_t
 H5FD_http_init(void)
 {
     /* Clear the error stack */
@@ -237,7 +237,7 @@ H5FD_http_term(void)
  *
  *-------------------------------------------------------------------------
  */
-herr_t
+EXTERNL herr_t
 H5Pset_fapl_http(hid_t fapl_id)
 {
     static const char *func = "H5FDset_fapl_http";  /*for error reporting*/

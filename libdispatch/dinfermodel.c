@@ -53,6 +53,13 @@ struct MagicFile {
 static char HDF5_SIGNATURE[MAGIC_NUMBER_LEN] = "\211HDF\r\n\032\n";
 
 #ifdef DEBUG
+
+static void dbgflush(void)
+{
+    fflush(stdout);
+    fflush(stderr);
+}
+
 static void
 fail(int err)
 {
@@ -92,7 +99,6 @@ static struct IOSPS {
 {"dap2",NC_IOSP_DAP2},
 {"dap4",NC_IOSP_DAP4},
 {"bytes",NC_IOSP_HTTP},
-{"zarr",NC_IOSP_ZARR},
 {NULL,0}
 };
 
@@ -133,8 +139,8 @@ static struct IospRead {
 } readable[] = {
 {NC_IOSP_FILE,1},
 {NC_IOSP_MEMORY,1},
+{NC_IOSP_UDF,0},
 {NC_IOSP_HTTP,1},
-{NC_IOSP_ZARR,0},
 {0,0},
 };
 
@@ -152,15 +158,10 @@ static struct NCPROTOCOLLIST {
     {NULL,NULL,NULL} /* Terminate search */
 };
 
-/* If Defined, then use only stdio for all magic number io;
-   otherwise use stdio or mpio as required.
- */
-#undef DEBUG
-
 /* Forward */
 static int NC_omodeinfer(int omode, NCmodel*);
 static int NC_implinfer(int useparallel, NCmodel* model);
-static int NC_dapinfer(int omode, NCmodel* model);
+static int NC_dapinfer(NClist*, NCmodel* model);
 static int check_file_type(const char *path, int flags, int use_parallel, void *parameters, NCmodel* model, NCURI* uri);
 static int processuri(const char* path, NCURI** urip, char** newpathp, NClist* modeargs);
 static int extractiosp(NClist* modeargs, int mode, NCmodel* model);
@@ -273,32 +274,37 @@ issingleton(const char* tag)
     return 0;	 
 }
 
-/* If we have a url, and nothing else fits, then infer DAP */
+/* If we have a url, see if we can determine DAP */
 static int
-NC_dapinfer(int omode, NCmodel* model)
+NC_dapinfer(NClist* modeargs, NCmodel* model)
 {
     int stat = NC_NOERR;
-    if(model->format == 0 && fIsSet(omode,NC_NETCDF4))
-	model->format = NC_FORMAT_NETCDF4;
-    else
-	conflictset(MF,model->format,NC_FORMAT_NC3);
-    if(model->iosp == 0 && model->impl == 0) {
-	switch(model->format) {
-   	case NC_FORMAT_NETCDF4:
-	    conflictset(MIO,model->iosp,NC_IOSP_DAP4);
-	    conflictset(MI,model->impl,NC_FORMATX_DAP4);
-	    break;
-	case NC_FORMAT_NC3:
-	    conflictset(MIO,model->iosp,NC_IOSP_DAP2);
-	    conflictset(MI,model->impl,NC_FORMATX_DAP2);
-            break;
-	default:
-	    conflictset(MIO,model->iosp,NC_IOSP_DAP2);
-	    conflictset(MI,model->impl,NC_FORMATX_DAP2);
-	    break;
+    int i;
+
+    /* 1. search modeargs for indicators */
+    for(i=0;i<nclistlength(modeargs);i++) {
+	const char* arg = nclistget(modeargs,i);
+	if(strcasecmp(arg,"bytes")==0
+	   || strcasecmp(arg,"zarr")==0) {    
+	    /* Ok, we know this is not DAP, so give up */
+	    return stat;
+	}
+	if(strcasecmp(arg,"dap2")==0) {    
+	    model->format = NC_FORMAT_NC3;
+	    model->iosp = NC_IOSP_DAP2;
+	    model->impl = NC_FORMATX_DAP2;
+	} else if(strcasecmp(arg,"dap4")==0) {    
+	    model->format = NC_FORMAT_NETCDF4;
+	    model->iosp = NC_IOSP_DAP4;
+	    model->impl = NC_FORMATX_DAP4;
 	}
     }
-done:
+    /* Ok, we have a URL, but no tags to tell us what it is, so assume DAP2 */
+    if(model->impl == 0) {
+	model->format = NC_FORMAT_NC3;
+	model->iosp = NC_IOSP_DAP2;
+	model->impl = NC_FORMATX_DAP2;
+    }
     return stat;
 }
 
@@ -325,13 +331,15 @@ NC_omodeinfer(int cmode, NCmodel* model)
     if(fIsSet(cmode,NC_NETCDF4)) {
 	conflictset(MF,model->format,NC_FORMAT_NETCDF4);
     }
-    if(fIsSet(cmode,NC_UDF0)) {
+    if(fIsSet(cmode,(NC_UDF0|NC_UDF1))) {
 	conflictset(MF,model->format,NC_FORMAT_NETCDF4);
-	conflictset(MI,model->impl,NC_FORMATX_UDF0);
-    }
-    if(fIsSet(cmode,NC_UDF1)) {
-	conflictset(MF,model->format,NC_FORMAT_NETCDF4);
-	conflictset(MI,model->impl,NC_FORMATX_UDF1);
+	/* For user formats, we must back out some previous decisions */
+	model->iosp = NC_IOSP_UDF; /* Do not know anything about this */
+        if(fIsSet(cmode,NC_UDF0)) {
+	    conflictset(MI,model->impl,NC_FORMATX_UDF0);
+	} else {
+	    conflictset(MI,model->impl,NC_FORMATX_UDF1);
+	}
     }
     /* Ignore following flags for now */
     if(fIsSet(cmode,NC_CLASSIC_MODEL)) {}
@@ -438,9 +446,9 @@ processuri(const char* path, NCURI** urip, char** newpathp, NClist* modeargs)
 
     /* At this point modeargs should contain all mode args from the URL */
 
-    /* Rebuild the path minus the fragment */
+    /* Rebuild the path (including fragment)*/
     if(newpathp)
-        *newpathp = ncuribuild(uri,NULL,NULL,NCURISVC);
+        *newpathp = ncuribuild(uri,NULL,NULL,NCURIALL);
     if(urip) {
 	*urip = uri;
 	uri = NULL;
@@ -483,18 +491,13 @@ NC_infermodel(const char* path, int* omodep, int iscreate, int useparallel, void
     NClist* modeargs = nclistnew();
 
     if((stat = processuri(path, &uri, &newpath, modeargs))) goto done;
+    isuri = (uri != NULL);
 
     /* Phase 1: compute the IOSP */
     if((stat = extractiosp(modeargs,omode,model))) goto done;
     assert(model->iosp != 0);
 
-    /* Phase 2: Infer from file content, if possible */
-    if(!iscreate && isreadable(model->iosp)) {
-	/* Ok, we need to try to read the file */
-	if((stat = check_file_type(path, omode, useparallel, params, model, uri))) goto done;
-    } 
-
-    /* Phase 3: Process the non-iosp mode arguments */
+    /* Phase 2: Process the non-iosp mode arguments */
     if(!modelcomplete(model)) {
 	if(isuri) {
 	    int i;
@@ -505,17 +508,26 @@ NC_infermodel(const char* path, int* omodep, int iscreate, int useparallel, void
 	}
     }
 
-    /* Phase 4: Do DAP inference */
+    /* Phase 3: See if we can infer DAP */
     if(!modelcomplete(model)) {
 	if(isuri) {
-            if((stat = NC_dapinfer(omode,model))) goto done;
+            if((stat = NC_dapinfer(modeargs,model))) goto done;
 	}
     }
 
-    /* Phase 5: mode inference */
+    /* Phase 4: mode inference */
     if(!modelcomplete(model)) {
         if((stat = NC_omodeinfer(omode,model))) goto done;
     }
+
+    /* Phase 5: Infer from file content, if possible;
+       this has highest precedence, so it may override
+       previous decisions.
+    */
+    if(!iscreate && isreadable(model->iosp)) {
+	/* Ok, we need to try to read the file */
+	if((stat = check_file_type(path, omode, useparallel, params, model, uri))) goto done;
+    } 
 
     /* Phase 6: Infer impl from format */
     if(!modelcomplete(model)) {
@@ -981,7 +993,7 @@ static void
 printmagic(const char* tag, char* magic, struct MagicFile* f)
 {
     int i;
-    fprintf(stderr,"%s: inmem=%d ispar=%d magic=",tag,f->inmemory,f->use_parallel);
+    fprintf(stderr,"%s: ispar=%d magic=",tag,f->use_parallel);
     for(i=0;i<MAGIC_NUMBER_LEN;i++) {
         unsigned int c = (unsigned int)magic[i];
 	c = c & 0x000000FF;

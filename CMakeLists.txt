@@ -834,6 +834,7 @@ ENDIF()
 # Option to support byte-range reading of remote datasets
 OPTION(ENABLE_BYTERANGE "Enable byte-range access to remote datasets.." OFF)
 IF(ENABLE_BYTERANGE)
+  FIND_PACKAGE(CURL)
   IF(NOT CURL_LIBRARY)
     MESSAGE(FATAL_ERROR "Byte-range support specified, CURL libraries are not found.")
     SET(ENABLE_BYTERANGE OFF)
@@ -843,7 +844,7 @@ IF(ENABLE_BYTERANGE)
 ENDIF()
 
 # Use ENABLE_HTTP instead of ENABLE_BYTERANGE
-SET(ENABLE_HTTP ${ENABLE_BYTERANGE})
+SET(ENABLE_HTTP ${ENABLE_BYTERANGE} CACHE BOOL "")
 
 # Check for the math library so it can be explicitly linked.
 IF(NOT WIN32)

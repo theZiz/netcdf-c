@@ -19,8 +19,8 @@
 #define NC_IOSP_MEMORY	(2)
 #define NC_IOSP_DAP2	(3)
 #define NC_IOSP_DAP4	(4)
-#define NC_IOSP_HTTP	(5)
-#define NC_IOSP_ZARR	(6)
+#define NC_IOSP_UDF	(5) /*Placeholder since we do not know IOSP for UDF*/
+#define NC_IOSP_HTTP	(6)
 
 /* Track the information hat will help us
    infer how to access the data defined by

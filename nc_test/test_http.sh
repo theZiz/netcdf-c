@@ -28,7 +28,7 @@ fi
 # Now test the reading of at least the metadata
 ${NCDUMP} -h "$URL3" >tst_http_nc3.cdl
 # compare
-diff tst_http_nc3.cdl ref_tst_http_nc3.cdl 
+diff tst_http_nc3.cdl ${srcdir}/ref_tst_http_nc3.cdl 
 
 if test "x$HAVENC4" = xyes ; then
 echo "*** Testing reading NetCDF-4 file with http"
@@ -42,7 +42,7 @@ fi
 # Now test the reading of at least the metadata
 ${NCDUMP} -h "$URL4" >tst_http_nc4.cdl
 # compare
-diff tst_http_nc4.cdl ref_tst_http_nc4.cdl 
+diff tst_http_nc4.cdl ${srcdir}/ref_tst_http_nc4.cdl 
 fi
 
 exit
