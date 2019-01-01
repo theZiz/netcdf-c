@@ -24,6 +24,9 @@
  * NOTE:    This driver is not as well tested as the standard SEC2 driver
  *          and is not intended for production use!
  */
+
+#include "config.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -53,7 +56,6 @@
 
 #endif /* H5_HAVE_WIN32_API */
 
-#include "config.h"
 #include "netcdf.h"
 #include "ncbytes.h"
 #include "nchttp.h"

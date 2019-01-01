@@ -17,6 +17,9 @@
 #ifdef ENABLE_HTTP
 #include "H5FDhttp.h"
 #endif
+#ifdef ENABLE_BYTERANGE
+#include "H5FDhttp.h"
+#endif
 
 #define NUM_TYPES 12 /**< Number of netCDF atomic types. */
 #define CD_NELEMS_ZLIB 1 /**< Number of parameters needed for ZLIB filter. */
